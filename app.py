@@ -29,8 +29,8 @@ if "current_edit_index" not in st.session_state:
     st.session_state.current_edit_index = None
 if "selected_row_idx" not in st.session_state:
     st.session_state.selected_row_idx = 0
-if "go_to_tab" not in st.session_state:
-    st.session_state.go_to_tab = None
+if "active_menu" not in st.session_state:
+    st.session_state.active_menu = "Add Bag"
 
 # --- إدارة البيانات والإعدادات ---
 def load_config():
@@ -103,22 +103,33 @@ def tr(text):
     }
     return translations.get(text, text) if st.session_state.language == "ar" else text
 
+# تحضير الخيارات مع الترجمة لربطها بـ Session State
+menu_mapping = {
+    tr("Add Bag"): "Add Bag",
+    tr("View / Stats"): "View / Stats",
+    tr("Alerts"): "Alerts",
+    tr("Stats"): "Stats"
+}
+menu_options = list(menu_mapping.keys())
+
+# المزامنة مع القائمة الجانبية
+try:
+    current_idx = list(menu_mapping.values()).index(st.session_state.active_menu)
+except:
+    current_idx = 0
+
 # --- القائمة الجانبية (Sidebar) ---
 with st.sidebar:
     st.title(app_config["store_name"])
     st.subheader("RepairBag Management Pro")
     st.markdown("---")
     
-    menu_options = [tr("Add Bag"), tr("View / Stats"), tr("Alerts"), tr("Stats")]
-    
-    # معالجة التنقل التلقائي عند الضغط على Edit
-    if st.session_state.go_to_tab in menu_options:
-        nav_index = menu_options.index(st.session_state.go_to_tab)
-        st.session_state.go_to_tab = None 
-    else:
-        nav_index = 0
-        
-    choice = st.radio("Navigation", menu_options, index=nav_index, key="nav_radio")
+    # دالة تغيير التبويب النشط عند الضغط اليدوي
+    def on_menu_change():
+        st.session_state.active_menu = menu_mapping[st.session_state.main_nav]
+
+    choice_translated = st.radio("Navigation", menu_options, index=current_idx, key="main_nav", on_change=on_menu_change, label_visibility="collapsed")
+    choice = menu_mapping[choice_translated]
     
     st.markdown("---")
     lang_choice = st.selectbox("Language / اللغة", ["English", "العربية"], index=0 if st.session_state.language == "en" else 1)
@@ -174,7 +185,7 @@ def show_bag_details_dialog(index):
         st.rerun()
 
 # --- القسم الأول: إضافة وتعديل باج (Add Bag) ---
-if choice == tr("Add Bag"):
+if choice == "Add Bag":
     st.header(tr("Add Bag") if st.session_state.current_edit_index is None else tr("Update"))
     edit_idx = st.session_state.current_edit_index
     default_rec = bags_data[edit_idx] if edit_idx is not None else {}
@@ -236,7 +247,7 @@ if choice == tr("Add Bag"):
             st.rerun()
 
 # --- القسم الثاني: عرض البيانات والبحث الذكي (View / Stats) ---
-elif choice == tr("View / Stats"):
+elif choice == "View / Stats":
     st.header(tr("View / Stats"))
     
     f1, f2, f3, f4 = st.columns(4)
@@ -353,7 +364,7 @@ elif choice == tr("View / Stats"):
             if st.button(tr("Edit"), use_container_width=True):
                 if password_input == ADMIN_PASSWORD:
                     st.session_state.current_edit_index = actual_bag_index
-                    st.session_state.go_to_tab = tr("Add Bag")  # تحديد التوجيه للتبويب الأول فوراً
+                    st.session_state.active_menu = "Add Bag"  # تحويل القيمة للتبويب الأول برمجياً
                     st.rerun()
                 else: st.error("Incorrect Admin Password!")
                 
@@ -372,7 +383,7 @@ elif choice == tr("View / Stats"):
         st.info("No matching data found.")
 
 # --- القسم الثالث: التنبيهات 📢 (Alerts) ---
-elif choice == tr("Alerts"):
+elif choice == "Alerts":
     st.header(tr("Alerts"))
     today = datetime.today()
     urgent_alerts, normal_alerts = [], []
@@ -399,7 +410,7 @@ elif choice == tr("Alerts"):
         else: st.success("No normal alerts.")
 
 # --- القسم الرابع: الإحصائيات وسجلات النظام (Stats) ---
-elif choice == tr("Stats"):
+elif choice == "Stats":
     st.header(tr("Stats"))
     income = sum(float(b.get("cost", 0)) for b in bags_data if b.get("status") == "Delivered")
     counts = {
