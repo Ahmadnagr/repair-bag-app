@@ -27,6 +27,8 @@ if "language" not in st.session_state:
     st.session_state.language = "en"
 if "current_edit_index" not in st.session_state:
     st.session_state.current_edit_index = None
+if "selected_row_idx" not in st.session_state:
+    st.session_state.selected_row_idx = 0
 
 # --- إدارة البيانات والإعدادات ---
 def load_config():
@@ -240,7 +242,6 @@ elif choice == tr("View / Stats"):
         full_mob = f"{b.get('country_code', '')}{b['customer_mobile']}"
         bag_no_str = str(b["bag_number"])
         
-        # تصحيح فلتر البحث بالكامل لمنع أي تعليق منطقي
         match_name = q_name in b["customer_name"].lower() if q_name else True
         match_bag = q_bag in bag_no_str.lower() if q_bag else True
         match_mob = q_mob in full_mob.lower() if q_mob else True
@@ -269,37 +270,68 @@ elif choice == tr("View / Stats"):
             })
 
     if filtered_data:
-        st.info("💡 Click anywhere on any row below to automatically select it and sync all action buttons instantly.")
+        st.info("💡 Click anywhere on any row below to select it.")
         
-        # عرض الجدول مع تفعيل الاختيار الفوري للسطر الكامل بشكل صحيح
+        # حل مشكلة اختفاء التحديد من خلال قراءة ودعم التحديد المسبق من الـ Session State
+        initial_selection = [st.session_state.selected_row_idx] if st.session_state.selected_row_idx < len(filtered_data) else [0]
+        
         selection = st.dataframe(
             filtered_data, 
             use_container_width=True, 
             hide_index=True,
             selection_mode="single-row",
-            on_select="rerun"
+            on_select="rerun",
+            selection=initial_selection
         )
         
-        # تحديد السطر المختار بأمان
-        selected_row_index = 0
+        # تثبيت الـ Index المختار في السيسشن ستيت منعاً للاختفاء المزعج
         if selection and selection.get("selection", {}).get("rows"):
-            selected_row_index = selection["selection"]["rows"][0]
+            st.session_state.selected_row_idx = selection["selection"]["rows"][0]
             
-        actual_bag_index = filtered_data[selected_row_index]["Index"]
+        # تجنب كراش الكود لو الفلاتر قللت عدد العناصر المتاحة
+        if st.session_state.selected_row_idx >= len(filtered_data):
+            st.session_state.selected_row_idx = 0
+            
+        actual_bag_index = filtered_data[st.session_state.selected_row_idx]["Index"]
         b_selected = bags_data[actual_bag_index]
         num = f"{b_selected.get('country_code','').replace('+','')}{b_selected.get('customer_mobile','')}"
         
         st.markdown(f"### 🎯 Active Selection: **Bag #{b_selected['bag_number']}** ({b_selected['customer_name']})")
         
-        # أزرار العمليات المباشرة للسطر المختار
+        # أزرار العمليات المباشرة للسطر المختار مع الصيغ الرسمية المطلوبة (عربي + إنجليزي مدمج)
         act_c1, act_c2 = st.columns(2)
         with act_c1:
-            msg_ready = f"السلام عليكم من {app_config['store_name']}.\nالتصليح الخاص بكم رقم (*{b_selected['bag_number']}*) جاهز.\nالتكلفة: *{b_selected.get('cost','0')}* درهم.\nشكراً لتعاملكم معنا."
+            msg_ready = (
+                f"السلام عليكم من {app_config['store_name']}.\n\n"
+                f"يرجى العلم بأن التصليح الخاص بكم رقم (*{b_selected['bag_number']}*) جاهز للإستلام بالفرع.\n"
+                f"التكلفة الإجمالية: *{b_selected.get('cost','0')}* درهم.\n\n"
+                f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
+                f"شكراً لتعاملكم معنا 🌹\n\n"
+                f"---------------------------\n\n"
+                f"Greetings from {app_config['store_name']}.\n\n"
+                f"Your repair bag (*{b_selected['bag_number']}*) is ready for collection at the store.\n"
+                f"Total Cost: *{b_selected.get('cost','0')}* AED.\n\n"
+                f"Kindly bring your repair receipt.\n"
+                f"Thank you 🌹"
+            )
             url_ready = f"https://api.whatsapp.com/send?phone={num}&text={urllib.parse.quote(msg_ready)}"
             if st.link_button("WhatsApp 📱 Ready Message", url_ready, use_container_width=True, type="primary"):
                 add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Ready Message Sent")
+                
         with act_c2:
-            msg_remind = f"السلام عليكم من {app_config['store_name']}.\nنود تذكيركم بأن التصليح رقم (*{b_selected['bag_number']}*) جاهز.\nالتكلفة: *{b_selected.get('cost','0')}* درهم.\nشكراً لتعاملكم معنا."
+            msg_remind = (
+                f"السلام عليكم من {app_config['store_name']}.\n\n"
+                f"نود تذكيركم بأن التصليح رقم (*{b_selected['bag_number']}*) لا يزال متاحاً للاستلام.\n"
+                f"التكلفة الإجمالية: *{b_selected.get('cost','0')}* درهم.\n\n"
+                f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
+                f"شكراً لتعاملكم معنا 🌹\n\n"
+                f"---------------------------\n\n"
+                f"Greetings from {app_config['store_name']}.\n\n"
+                f"This is a friendly reminder that your repair bag (*{b_selected['bag_number']}*) is still waiting for collection.\n"
+                f"Total Cost: *{b_selected.get('cost','0')}* AED.\n\n"
+                f"Kindly bring your repair receipt.\n"
+                f"Thank you 🌹"
+            )
             url_remind = f"https://api.whatsapp.com/send?phone={num}&text={urllib.parse.quote(msg_remind)}"
             if st.link_button(tr("Send Reminder"), url_remind, use_container_width=True):
                 add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent")
@@ -329,6 +361,8 @@ elif choice == tr("View / Stats"):
                     add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Record Deleted")
                     del bags_data[actual_bag_index]
                     save_data(bags_data)
+                    st.session_state.current_edit_index = None
+                    st.session_state.selected_row_idx = 0
                     st.success("Record deleted!")
                     st.rerun()
                 else: st.error("Incorrect Admin Password!")
