@@ -29,6 +29,8 @@ if "current_edit_index" not in st.session_state:
     st.session_state.current_edit_index = None
 if "selected_row_idx" not in st.session_state:
     st.session_state.selected_row_idx = 0
+if "go_to_tab" not in st.session_state:
+    st.session_state.go_to_tab = None
 
 # --- إدارة البيانات والإعدادات ---
 def load_config():
@@ -87,7 +89,7 @@ def tr(text):
         "Search By Bag": "بحث بالرقم", "Search By Mobile": "بحث بالموبايل",
         "Alerts": "التنبيهات 📢", "Filter Status:": "تصفية الحالة:", "Update": "تحديث البيانات",
         "Send Reminder": "إرسال تذكير 🔔", "Reminders": "التذكيرات", "Total Bags": "إجمالي الباجات",
-        "Collected": "تم تحصيله", "Received": "استلام", "Out Repair": "خروج تصليح",
+        "Collected": "تم تم تحصيله", "Received": "استلام", "Out Repair": "خروج تصليح",
         "Back in Store": "وصل المحل", "Delivered": "تم التسليم", "Add Bag": "إضافة باج",
         "View / Stats": "عرض / تصفية", "Income": "الدخل", "In Store": "في المحل",
         "Monthly Performance": "الأداء الشهري", "View Action Logs 📜": "عرض سجل العمليات 📜",
@@ -108,7 +110,15 @@ with st.sidebar:
     st.markdown("---")
     
     menu_options = [tr("Add Bag"), tr("View / Stats"), tr("Alerts"), tr("Stats")]
-    choice = st.radio("Navigation", menu_options, label_visibility="collapsed")
+    
+    # معالجة التنقل التلقائي عند الضغط على Edit
+    if st.session_state.go_to_tab in menu_options:
+        nav_index = menu_options.index(st.session_state.go_to_tab)
+        st.session_state.go_to_tab = None 
+    else:
+        nav_index = 0
+        
+    choice = st.radio("Navigation", menu_options, index=nav_index, key="nav_radio")
     
     st.markdown("---")
     lang_choice = st.selectbox("Language / اللغة", ["English", "العربية"], index=0 if st.session_state.language == "en" else 1)
@@ -272,7 +282,6 @@ elif choice == tr("View / Stats"):
     if filtered_data:
         st.info("💡 Click anywhere on any row below to select it.")
         
-        # تم إزالة بارامتر selection المسبب للكراش، والاعتماد بالكامل على الواجهة الحديثة المضمونة
         selection = st.dataframe(
             filtered_data, 
             use_container_width=True, 
@@ -281,11 +290,9 @@ elif choice == tr("View / Stats"):
             on_select="rerun"
         )
         
-        # قراءة التحديد من المستخدم وتثبيته في السيسشن بأمان
         if selection and selection.get("selection", {}).get("rows"):
             st.session_state.selected_row_idx = selection["selection"]["rows"][0]
             
-        # تجنب كراش الفلاتر لو غيرت في البحث
         if st.session_state.selected_row_idx >= len(filtered_data):
             st.session_state.selected_row_idx = 0
             
@@ -295,7 +302,6 @@ elif choice == tr("View / Stats"):
         
         st.markdown(f"### 🎯 Active Selection: **Bag #{b_selected['bag_number']}** ({b_selected['customer_name']})")
         
-        # أزرار العمليات المباشرة للسطر المختار مع الصيغ الرسمية المطلوبة (عربي + إنجليزي مدمج)
         act_c1, act_c2 = st.columns(2)
         with act_c1:
             msg_ready = (
@@ -334,7 +340,6 @@ elif choice == tr("View / Stats"):
                 add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent")
                 
         st.markdown("---")
-        # الأزرار الإدارية وحقل كلمة المرور
         btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
         
         with btn_manage_col1:
@@ -348,7 +353,7 @@ elif choice == tr("View / Stats"):
             if st.button(tr("Edit"), use_container_width=True):
                 if password_input == ADMIN_PASSWORD:
                     st.session_state.current_edit_index = actual_bag_index
-                    st.success(f"Bag #{b_selected['bag_number']} loaded into Add/Update tab!")
+                    st.session_state.go_to_tab = tr("Add Bag")  # تحديد التوجيه للتبويب الأول فوراً
                     st.rerun()
                 else: st.error("Incorrect Admin Password!")
                 
