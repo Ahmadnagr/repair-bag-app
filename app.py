@@ -272,23 +272,20 @@ elif choice == tr("View / Stats"):
     if filtered_data:
         st.info("💡 Click anywhere on any row below to select it.")
         
-        # حل مشكلة اختفاء التحديد من خلال قراءة ودعم التحديد المسبق من الـ Session State
-        initial_selection = [st.session_state.selected_row_idx] if st.session_state.selected_row_idx < len(filtered_data) else [0]
-        
+        # تم إزالة بارامتر selection المسبب للكراش، والاعتماد بالكامل على الواجهة الحديثة المضمونة
         selection = st.dataframe(
             filtered_data, 
             use_container_width=True, 
             hide_index=True,
             selection_mode="single-row",
-            on_select="rerun",
-            selection=initial_selection
+            on_select="rerun"
         )
         
-        # تثبيت الـ Index المختار في السيسشن ستيت منعاً للاختفاء المزعج
+        # قراءة التحديد من المستخدم وتثبيته في السيسشن بأمان
         if selection and selection.get("selection", {}).get("rows"):
             st.session_state.selected_row_idx = selection["selection"]["rows"][0]
             
-        # تجنب كراش الكود لو الفلاتر قللت عدد العناصر المتاحة
+        # تجنب كراش الفلاتر لو غيرت في البحث
         if st.session_state.selected_row_idx >= len(filtered_data):
             st.session_state.selected_row_idx = 0
             
