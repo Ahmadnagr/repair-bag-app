@@ -112,7 +112,7 @@ menu_mapping = {
 }
 menu_options = list(menu_mapping.keys())
 
-# المزامنة مع القائمة الجانبية
+# تحديد الـ Index الحالي في الـ Radio بشكل ديناميكي مضمون للتحديث برمجياً
 try:
     current_idx = list(menu_mapping.values()).index(st.session_state.active_menu)
 except:
@@ -124,11 +124,19 @@ with st.sidebar:
     st.subheader("RepairBag Management Pro")
     st.markdown("---")
     
-    # دالة تغيير التبويب النشط عند الضغط اليدوي
+    # تحديث السيسشن ستيت فوراً عند الضغط اليدوي للمستخدم
     def on_menu_change():
-        st.session_state.active_menu = menu_mapping[st.session_state.main_nav]
+        st.session_state.active_menu = menu_mapping[st.session_state.nav_selector]
 
-    choice_translated = st.radio("Navigation", menu_options, index=current_idx, key="main_nav", on_change=on_menu_change, label_visibility="collapsed")
+    # ربطنا الـ index بمتغير ديناميكي ووفرنا زرار تحكم يدوي للـ State
+    choice_translated = st.radio(
+        "Navigation", 
+        menu_options, 
+        index=current_idx, 
+        key="nav_selector", 
+        on_change=on_menu_change, 
+        label_visibility="collapsed"
+    )
     choice = menu_mapping[choice_translated]
     
     st.markdown("---")
@@ -239,11 +247,13 @@ if choice == "Add Bag":
                         add_to_log(bag_no.strip(), cust_name.strip(), "Record Updated")
                     save_data(bags_data)
                     st.success("Saved successfully!")
+                    st.session_state.active_menu = "View / Stats"  # بعد الحفظ يرجع لتبويب العرض تلقائياً
                     st.rerun()
                     
     if edit_idx is not None:
         if st.button("Cancel Edit"):
             st.session_state.current_edit_index = None
+            st.session_state.active_menu = "View / Stats"
             st.rerun()
 
 # --- القسم الثاني: عرض البيانات والبحث الذكي (View / Stats) ---
@@ -364,7 +374,7 @@ elif choice == "View / Stats":
             if st.button(tr("Edit"), use_container_width=True):
                 if password_input == ADMIN_PASSWORD:
                     st.session_state.current_edit_index = actual_bag_index
-                    st.session_state.active_menu = "Add Bag"  # تحويل القيمة للتبويب الأول برمجياً
+                    st.session_state.active_menu = "Add Bag"  # تحويل القيمة برمجياً قبل عمل الـ rerun المضمون
                     st.rerun()
                 else: st.error("Incorrect Admin Password!")
                 
