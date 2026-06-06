@@ -89,7 +89,7 @@ def tr(text):
         "Search By Bag": "بحث بالرقم", "Search By Mobile": "بحث بالموبايل",
         "Alerts": "التنبيهات 📢", "Filter Status:": "تصفية الحالة:", "Update": "تحديث البيانات",
         "Send Reminder": "إرسال تذكير 🔔", "Reminders": "التذكيرات", "Total Bags": "إجمالي الباجات",
-        "Collected": "تم تم تحصيله", "Received": "استلام", "Out Repair": "خروج تصليح",
+        "Collected": "تم تحصيله", "Received": "استلام", "Out Repair": "خروج تصليح",
         "Back in Store": "وصل المحل", "Delivered": "تم التسليم", "Add Bag": "إضافة باج",
         "View / Stats": "عرض / تصفية", "Income": "الدخل", "In Store": "في المحل",
         "Monthly Performance": "الأداء الشهري", "View Action Logs 📜": "عرض سجل العمليات 📜",
@@ -103,7 +103,7 @@ def tr(text):
     }
     return translations.get(text, text) if st.session_state.language == "ar" else text
 
-# تحضير الخيارات مع الترجمة لربطها بـ Session State
+# تحضير القواميس والخيارات
 menu_mapping = {
     tr("Add Bag"): "Add Bag",
     tr("View / Stats"): "View / Stats",
@@ -112,7 +112,7 @@ menu_mapping = {
 }
 menu_options = list(menu_mapping.keys())
 
-# تحديد الـ Index الحالي في الـ Radio بشكل ديناميكي مضمون للتحديث برمجياً
+# حساب الـ Index الحالي بناءً على القيمة المحفوظة في السيسشن ستيت دايماً
 try:
     current_idx = list(menu_mapping.values()).index(st.session_state.active_menu)
 except:
@@ -124,20 +124,17 @@ with st.sidebar:
     st.subheader("RepairBag Management Pro")
     st.markdown("---")
     
-    # تحديث السيسشن ستيت فوراً عند الضغط اليدوي للمستخدم
-    def on_menu_change():
-        st.session_state.active_menu = menu_mapping[st.session_state.nav_selector]
-
-    # ربطنا الـ index بمتغير ديناميكي ووفرنا زرار تحكم يدوي للـ State
+    # تم إزالة الـ key والـ on_change لضمان استجابة الـ index الفورية للتغيير البرمجي
     choice_translated = st.radio(
         "Navigation", 
         menu_options, 
-        index=current_idx, 
-        key="nav_selector", 
-        on_change=on_menu_change, 
+        index=current_idx,
         label_visibility="collapsed"
     )
-    choice = menu_mapping[choice_translated]
+    
+    # تحديث الـ active_menu بناءً على اختيار المستخدم اليدوي
+    st.session_state.active_menu = menu_mapping[choice_translated]
+    choice = st.session_state.active_menu
     
     st.markdown("---")
     lang_choice = st.selectbox("Language / اللغة", ["English", "العربية"], index=0 if st.session_state.language == "en" else 1)
@@ -278,7 +275,7 @@ elif choice == "View / Stats":
         match_mob = q_mob in full_mob.lower() if q_mob else True
         match_filter = (filter_status == tr("All")) or (filter_status == tr("Urgent") and b.get("is_urgent", False)) or (b.get("status") == filter_status)
                        
-        if match_name and match_bag and match_mob and match_filter:
+        if match_name && match_bag && match_mob && match_filter:
             try:
                 b_date = datetime.strptime(b["status_date"], "%Y-%m-%d")
                 days = (today - b_date).days
@@ -374,7 +371,7 @@ elif choice == "View / Stats":
             if st.button(tr("Edit"), use_container_width=True):
                 if password_input == ADMIN_PASSWORD:
                     st.session_state.current_edit_index = actual_bag_index
-                    st.session_state.active_menu = "Add Bag"  # تحويل القيمة برمجياً قبل عمل الـ rerun المضمون
+                    st.session_state.active_menu = "Add Bag"  # التغيير المباشر والقاطع للسيسشن ستيت
                     st.rerun()
                 else: st.error("Incorrect Admin Password!")
                 
