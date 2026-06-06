@@ -124,7 +124,6 @@ with st.sidebar:
     st.subheader("RepairBag Management Pro")
     st.markdown("---")
     
-    # تم إزالة الـ key والـ on_change لضمان استجابة الـ index الفورية للتغيير البرمجي
     choice_translated = st.radio(
         "Navigation", 
         menu_options, 
@@ -275,7 +274,8 @@ elif choice == "View / Stats":
         match_mob = q_mob in full_mob.lower() if q_mob else True
         match_filter = (filter_status == tr("All")) or (filter_status == tr("Urgent") and b.get("is_urgent", False)) or (b.get("status") == filter_status)
                        
-        if match_name && match_bag && match_mob && match_filter:
+        # تم تصحيح الصيغة هنا من && إلى and للبايثون
+        if match_name and match_bag and match_mob and match_filter:
             try:
                 b_date = datetime.strptime(b["status_date"], "%Y-%m-%d")
                 days = (today - b_date).days
@@ -371,7 +371,7 @@ elif choice == "View / Stats":
             if st.button(tr("Edit"), use_container_width=True):
                 if password_input == ADMIN_PASSWORD:
                     st.session_state.current_edit_index = actual_bag_index
-                    st.session_state.active_menu = "Add Bag"  # التغيير المباشر والقاطع للسيسشن ستيت
+                    st.session_state.active_menu = "Add Bag"
                     st.rerun()
                 else: st.error("Incorrect Admin Password!")
                 
