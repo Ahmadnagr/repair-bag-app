@@ -15,13 +15,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 🚨 ربط قاعدة البيانات السحابية (Supabase) 🚨 ---
-# استبدل القيم اللي تحت دي بالقيم الخاصة بمشروعك من موقع Supabase
+# --- ربط قاعدة البيانات السحابية (Supabase) ---
 SUPABASE_URL = "https://aarksbtetlwjzicmzoql.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhcmtzYnRldGx3anppY216b3FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzcxMTgsImV4cCI6MjA5NjUxMzExOH0.30wjuMGk-c7Qy3pyqxrX0jGgsNapCceKzcpsg6B0WS4"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhcmtzYnRldGx3anppY216b3FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkzNjI2NzcsImV4cCI6MjA2NDkzODY3N30.i96O02ZfKjVpE9SAn8gEOf0vU5FfA7vXjXN7v6vH9_w"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+OLD_JSON_FILE = "repair_bags.json"
 IMAGE_DIR = "uploaded_images"
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
@@ -47,13 +47,12 @@ def db_add_new_branch(branch_name, password):
 
 def db_load_bags():
     try:
-        res = supabase.table("repair_bags").select("*").order("id", Any=False).execute()
+        res = supabase.table("repair_bags").select("*").order("id", desc=False).execute()
         return res.data
     except:
         return []
 
 def db_save_bag(bag_data):
-    # مسح الـ id لتجنب مشاكل الأوتو سيريال عند الإضافة الجديدة
     if "id" in bag_data: del bag_data["id"]
     supabase.table("repair_bags").insert(bag_data).execute()
 
@@ -236,7 +235,6 @@ with st.sidebar:
 # --- نافذة التفاصيل والبيانات الإضافية ---
 @st.dialog("Bag Extra Details & Management")
 def show_bag_details_dialog(index, bag_db_id):
-    # جلب السجل الحالي الدقيق حياً من قاعدة البيانات لتجنب لخبطة الفهارس
     bags_fresh = db_load_bags()
     b = next((item for item in bags_fresh if item["id"] == bag_db_id), bags_fresh[index])
     
@@ -280,8 +278,6 @@ def show_bag_details_dialog(index, bag_db_id):
 if choice == "Add Bag":
     st.header(tr("Add Bag") if st.session_state.current_edit_index is None else tr("Update"))
     edit_idx = st.session_state.current_edit_index
-    
-    # الحصول على البيانات في حالة التعديل بأمان من السيرفر
     default_rec = bags_data[edit_idx] if (edit_idx is not None and edit_idx < len(bags_data)) else {}
     
     with st.form("bag_form", clear_on_submit=False):
@@ -549,14 +545,39 @@ elif choice == "Stats":
         else: st.info("No logs found.")
 
     st.markdown("---")
-    # شاشة تتبع الفروع وزر الـ Backup السحابي (متاح فقط لأحمد بالباسورد 9999)
+    # شاشة تتبع الدخول وزر الاستيراد والسحب الاحتياطي
     with st.expander(f"🔐 {tr('Login History')} & {tr('Super Backup')} (Super Admin Only)"):
         if is_super_user:
-            # 📥 تنفيذ دمج الحلين: تحميل نسخة احتياطية إكسل كاملة لكل بيانات الشركة حياً من السيرفر
+            st.subheader("⚙️ Data Sync Tools")
+            
+            # زر سحب واستيراد البيانات القديمة من ملف الـ JSON لـ Supabase
+            if os.path.exists(OLD_JSON_FILE):
+                if st.button("⚙️ Import Data From Old JSON to Cloud", type="secondary"):
+                    try:
+                        with open(OLD_JSON_FILE, "r", encoding="utf-8") as f_old:
+                            old_data = json.load(f_old)
+                        if old_data:
+                            imported_count = 0
+                            for old_bag in old_data:
+                                # حماية من التكرار بناء على رقم الباج
+                                if not any(str(b["bag_number"]) == str(old_bag["bag_number"]) for b in bags_data):
+                                    if "id" in old_bag: del old_bag["id"]
+                                    if "branch_owner" not in old_bag: old_bag["branch_owner"] = "Yas Mall"
+                                    db_save_bag(old_bag)
+                                    imported_count += 1
+                            st.success(f"Successfully imported {imported_count} record(s) to Supabase Cloud!")
+                            st.rerun()
+                        else:
+                            st.warning("Old JSON file is empty.")
+                    except Exception as e_mig:
+                        st.error(f"Migration error: {str(e_mig)}")
+            else:
+                st.info("No legacy 'repair_bags.json' file detected on the Streamlit server to import.")
+
+            st.markdown("---")
             st.subheader(tr("Super Backup"))
             if bags_data:
                 df_backup = pd.DataFrame(bags_data)
-                # إعداد وحفظ ملف إكسل محلي مؤقت للتنزيل
                 df_backup.to_excel("Jawhara_Full_Backup.xlsx", index=False)
                 with open("Jawhara_Full_Backup.xlsx", "rb") as f_backup:
                     st.download_button(
