@@ -2,115 +2,102 @@ import json
 import os
 import urllib.parse
 from datetime import datetime
+import pandas as pd
 import streamlit as st
 from PIL import Image
+from supabase import create_client
 
 # --- إعدادات الصفحة العامة ---
 st.set_page_config(
-    page_title="RepairBag Pro Enterprise © 2026",
+    page_title="RepairBag Pro Enterprise Cloud © 2026",
     page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- ملفات التخزين السحابي المحلي ---
-DATA_FILE = "repair_bags.json"
-LOG_FILE = "actions_log.json"
-BRANCH_CONFIG_FILE = "branch_config.json"
-IMAGE_DIR = "uploaded_images"
+# --- 🚨 ربط قاعدة البيانات السحابية (Supabase) 🚨 ---
+# استبدل القيم اللي تحت دي بالقيم الخاصة بمشروعك من موقع Supabase
+SUPABASE_URL = "https://aarksbtetlwjzicmzoql.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhcmtzYnRldGx3anppY216b3FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzcxMTgsImV4cCI6MjA5NjUxMzExOH0.30wjuMGk-c7Qy3pyqxrX0jGgsNapCceKzcpsg6B0WS4"
 
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+IMAGE_DIR = "uploaded_images"
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
 
-# --- إدارة حسابات وإعدادات الفروع ---
 SUPER_ADMIN_PASSWORD = "9999" # باسورد الإدمن العام الخاصة بأحمد
-DEFAULT_BRANCHES = {
-    "Yas Mall": {"password": "0000"},
-    "Al Dhafra Mall": {"password": "0000"},
-    "Khalidiyah Mall": {"password": "0000"},
-    "Marina Mall": {"password": "0000"},
-    "Mushrif Mall": {"password": "0000"},
-    "Reem Mall": {"password": "0000"},
-    "Galleria Mall": {"password": "0000"},
-    "Raha Mall": {"password": "0000"},
-    "Maqtaa Mall": {"password": "0000"},
-    "Bawabat Al Sharq Mall": {"password": "0000"},
-    "Deerfields Mall": {"password": "0000"},
-    "Dalma Mall": {"password": "0000"},
-    "Forsan Mall": {"password": "0000"},
-    "Al Wahda Mall": {"password": "0000"},
-    "Abu Dhabi Mall": {"password": "0000"},
-    "MZ1 Shop": {"password": "0000"},
-    "MZ2 Shop": {"password": "0000"},
-    "Masdar CC Mall": {"password": "0000"},
-    "Fairuz Dalma Mall": {"password": "0000"},
-    "Makani Shamkha Mall": {"password": "0000"},
-    "Madinati Mall": {"password": "0000"}
-}
-
-def load_branch_config():
-    if os.path.exists(BRANCH_CONFIG_FILE):
-        try:
-            with open(BRANCH_CONFIG_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except:
-            return {"branches": DEFAULT_BRANCHES, "login_history": [], "last_logged_branch": "Yas Mall"}
-    return {"branches": DEFAULT_BRANCHES, "login_history": [], "last_logged_branch": "Yas Mall"}
-
-def save_branch_config(config):
-    with open(BRANCH_CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(config, f, ensure_ascii=False, indent=4)
-
-def load_data():
-    if os.path.exists(DATA_FILE):
-        try:
-            with open(DATA_FILE, "r", encoding="utf-8") as f: return json.load(f)
-        except: return []
-    return []
-
-def save_data(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-
-def load_logs():
-    if os.path.exists(LOG_FILE):
-        try:
-            with open(LOG_FILE, "r", encoding="utf-8") as f: return json.load(f)
-        except: return []
-    return []
-
-def add_to_log(bag_number, customer_name, action, branch_name):
-    logs = load_logs()
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_entry = {"time": now, "bag": bag_number, "customer": customer_name, "action": action, "branch": branch_name}
-    logs.append(log_entry)
-    with open(LOG_FILE, "w", encoding="utf-8") as f:
-        json.dump(logs, f, ensure_ascii=False, indent=4)
-
-# تحميل الإعدادات والبيانات
-branch_config = load_branch_config()
-bags_data = load_data()
-actions_log = load_logs()
-
-# --- إدارة حالة التطبيق الجارية (Session State) ---
-if "language" not in st.session_state:
-    st.session_state.language = "en"
-if "current_edit_index" not in st.session_state:
-    st.session_state.current_edit_index = None
-if "selected_row_idx" not in st.session_state:
-    st.session_state.selected_row_idx = 0
-if "active_menu" not in st.session_state:
-    st.session_state.active_menu = "Add Bag"
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "current_branch" not in st.session_state:
-    st.session_state.current_branch = None
-
-ADMIN_PASSWORD = "1234" # باسورد العمليات الداخلية الافتراضية (تعديل/حذف باج)
+ADMIN_PASSWORD = "1234"
 COUNTRY_CODES = ["+971", "+20", "+966", "+965", "+974", "+973", "+968", "+1", "+44"]
 STATUS_OPTIONS = ["Received", "Out for Repair", "Received Back", "Delivered"]
 
-# --- قاموس الترجمة الكامل الموحد ---
+# --- دالات التعامل مع السيرفر السحابي بدلاً من ملفات الـ JSON القديمة ---
+def db_load_branches():
+    try:
+        res = supabase.table("branch_settings").select("*").execute()
+        return {item["branch_name"]: {"password": item["password"]} for item in res.data}
+    except:
+        return {}
+
+def db_update_branch_password(branch_name, new_pass):
+    supabase.table("branch_settings").update({"password": new_pass}).eq("branch_name", branch_name).execute()
+
+def db_add_new_branch(branch_name, password):
+    supabase.table("branch_settings").insert({"branch_name": branch_name, "password": password}).execute()
+
+def db_load_bags():
+    try:
+        res = supabase.table("repair_bags").select("*").order("id", Any=False).execute()
+        return res.data
+    except:
+        return []
+
+def db_save_bag(bag_data):
+    # مسح الـ id لتجنب مشاكل الأوتو سيريال عند الإضافة الجديدة
+    if "id" in bag_data: del bag_data["id"]
+    supabase.table("repair_bags").insert(bag_data).execute()
+
+def db_update_bag(bag_id, bag_data):
+    if "id" in bag_data: del bag_data["id"]
+    supabase.table("repair_bags").update(bag_data).eq("id", bag_id).execute()
+
+def db_delete_bag(bag_id):
+    supabase.table("repair_bags").delete().eq("id", bag_id).execute()
+
+def db_load_logs():
+    try:
+        res = supabase.table("actions_log").select("*").execute()
+        return res.data
+    except: return []
+
+def db_add_to_log(bag_number, customer_name, action, branch_name):
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = {"time": now, "bag": str(bag_number), "customer": customer_name, "action": action, "branch": branch_name}
+    supabase.table("actions_log").insert(log_entry).execute()
+
+def db_load_login_history():
+    try:
+        res = supabase.table("login_history").select("*").execute()
+        return res.data
+    except: return []
+
+def db_add_login_history(branch_name, login_type):
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    supabase.table("login_history").insert({"time": now_str, "branch": branch_name, "type": login_type}).execute()
+
+# --- إدارة حالة التطبيق الجارية (Session State) ---
+if "language" not in st.session_state: st.session_state.language = "en"
+if "current_edit_index" not in st.session_state: st.session_state.current_edit_index = None
+if "selected_row_idx" not in st.session_state: st.session_state.selected_row_idx = 0
+if "active_menu" not in st.session_state: st.session_state.active_menu = "Add Bag"
+if "logged_in" not in st.session_state: st.session_state.logged_in = False
+if "current_branch" not in st.session_state: st.session_state.current_branch = None
+if "last_branch_selection" not in st.session_state: st.session_state.last_branch_selection = "Yas Mall"
+
+# تحميل بيانات الفروع السحابية حياً
+branches_data_cloud = db_load_branches()
+
+# --- قاموس الترجمة الموحد ---
 def tr(text):
     translations = {
         "Customer Name": "اسم العميل", "Bag Number": "رقم الحقيبة", "Mobile": "رقم الهاتف",
@@ -133,58 +120,56 @@ def tr(text):
         "Change Password": "تغيير كلمة المرور الخاصة بالفرع", "Old Password": "كلمة المرور القديمة",
         "New Password": "كلمة المرور الجديدة", "Save Password": "حفظ كلمة المرور الجديدة",
         "Login History": "سجل دخول الأجهزة للفروع", "Branch": "الفرع", "Logout": "تسجيل الخروج 🚪",
-        "Add New Branch": "إضافة فرع جديد للسيستم 🏢", "Branch Name": "اسم الفرع الجديد", "Branch Password": "باسورد الفرع الجديد"
+        "Add New Branch": "إضافة فرع جديد للسيستم 🏢", "Branch Name": "اسم الفرع الجديد", "Branch Password": "باسورد الفرع الجديد",
+        "Super Backup": "نسخة احتياطية كاملة للشركة 📥"
     }
     return translations.get(text, text) if st.session_state.language == "ar" else text
-
 
 # ==========================================
 # --- 1. شاشة تسجيل الدخول (Login Screen) ---
 # ==========================================
 if not st.session_state.logged_in:
     st.markdown("<h1 style='text-align: center; color: #1f538d;'>💎 Jawhara Management System</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align: center;'>RepairBag Pro Enterprise Edition 2026</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center;'>RepairBag Pro Enterprise Cloud 2026</h3>", unsafe_allow_html=True)
     st.markdown("---")
     
     col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
     with col_l2:
         st.write("### 🔑 Branch Secure Login")
+        branches_list = list(branches_data_cloud.keys()) if branches_data_cloud else ["Yas Mall"]
         
-        branches_list = list(branch_config["branches"].keys())
-        try:
-            last_idx = branches_list.index(branch_config.get("last_logged_branch", "Yas Mall"))
-        except:
-            last_idx = 0
+        try: last_idx = branches_list.index(st.session_state.last_branch_selection)
+        except: last_idx = 0
             
         selected_branch = st.selectbox("Choose Branch / اختر الفرع", branches_list, index=last_idx)
         password_input = st.text_input("Enter Password / أدخل كلمة المرور", type="password")
         
         if st.button("Login / دخول", type="primary", use_container_width=True):
-            correct_password = branch_config["branches"][selected_branch]["password"]
+            correct_password = branches_data_cloud.get(selected_branch, {}).get("password", "0000")
             
             if password_input == correct_password or password_input == SUPER_ADMIN_PASSWORD:
                 st.session_state.logged_in = True
                 st.session_state.current_branch = selected_branch
+                st.session_state.last_branch_selection = selected_branch
                 
-                branch_config["last_logged_branch"] = selected_branch
+                login_type = "Super Admin Bypass" if password_input == SUPER_ADMIN_PASSWORD else "Standard Branch Login"
+                db_add_login_history(selected_branch, login_type)
                 
-                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                branch_config["login_history"].append({
-                    "time": now_str,
-                    "branch": selected_branch,
-                    "type": "Super Admin Bypass" if password_input == SUPER_ADMIN_PASSWORD else "Standard Branch Login"
-                })
-                save_branch_config(branch_config)
                 st.success(f"Welcome back, {selected_branch}!")
                 st.rerun()
             else:
                 st.error("Incorrect Password! Please try again.")
     st.stop()
 
+# جلب البيانات الحية الحالية من السحاب بعد تسجيل الدخول المضمون
+bags_data = db_load_bags()
+actions_log = db_load_logs()
 
-# ==========================================
-# --- 2. واجهة البرنامج بعد تسجيل الدخول ---
-# ==========================================
+# التحقق هل المستخدم الحالي هو الإدمن العام أحمد
+is_super_user = st.session_state.logged_in and (st.session_state.last_branch_selection in branches_data_cloud) and any(
+    h.get("branch") == st.session_state.current_branch and h.get("type") == "Super Admin Bypass" 
+    for h in db_load_login_history()
+)
 
 menu_mapping = {
     tr("Add Bag"): "Add Bag",
@@ -194,15 +179,13 @@ menu_mapping = {
 }
 menu_options = list(menu_mapping.keys())
 
-try:
-    current_idx = list(menu_mapping.values()).index(st.session_state.active_menu)
-except:
-    current_idx = 0
+try: current_idx = list(menu_mapping.values()).index(st.session_state.active_menu)
+except: current_idx = 0
 
 # --- القائمة الجانبية (Sidebar) ---
 with st.sidebar:
     st.title(st.session_state.current_branch)
-    st.caption("Connected Securely 🟢")
+    st.caption("Connected Securely to Cloud ☁️ 🟢")
     st.markdown("---")
     
     choice_translated = st.radio("Navigation", menu_options, index=current_idx, label_visibility="collapsed")
@@ -222,11 +205,10 @@ with st.sidebar:
         old_p = st.text_input(tr("Old Password"), type="password")
         new_p = st.text_input(tr("New Password"), type="password")
         if st.button(tr("Save Password"), use_container_width=True):
-            actual_old = branch_config["branches"][st.session_state.current_branch]["password"]
+            actual_old = branches_data_cloud[st.session_state.current_branch]["password"]
             if old_p == actual_old or old_p == SUPER_ADMIN_PASSWORD:
                 if len(new_p.strip()) > 0:
-                    branch_config["branches"][st.session_state.current_branch]["password"] = new_p.strip()
-                    save_branch_config(branch_config)
+                    db_update_branch_password(st.session_state.current_branch, new_p.strip())
                     st.success("Password updated successfully!")
                 else: st.error("Password cannot be empty!")
             else: st.error("Incorrect Old Password!")
@@ -239,9 +221,8 @@ with st.sidebar:
         if st.button(tr("Add Bag") + " Branch"):
             if super_p == SUPER_ADMIN_PASSWORD:
                 if new_b_name.strip() and new_b_pass.strip():
-                    branch_config["branches"][new_b_name.strip()] = {"password": new_b_pass.strip()}
-                    save_branch_config(branch_config)
-                    st.success(f"Branch '{new_b_name}' added!")
+                    db_add_new_branch(new_b_name.strip(), new_b_pass.strip())
+                    st.success(f"Branch '{new_b_name}' added successfully!")
                     st.rerun()
                 else: st.error("Please fill in branch name and password!")
             else: st.error("Only Super Admin can add new branches!")
@@ -252,12 +233,13 @@ with st.sidebar:
         st.session_state.current_branch = None
         st.rerun()
 
-is_super_user = any(h["type"] == "Super Admin Bypass" for h in reversed(branch_config["login_history"]) if h["branch"] == st.session_state.current_branch)
-
 # --- نافذة التفاصيل والبيانات الإضافية ---
 @st.dialog("Bag Extra Details & Management")
-def show_bag_details_dialog(index):
-    b = bags_data[index]
+def show_bag_details_dialog(index, bag_db_id):
+    # جلب السجل الحالي الدقيق حياً من قاعدة البيانات لتجنب لخبطة الفهارس
+    bags_fresh = db_load_bags()
+    b = next((item for item in bags_fresh if item["id"] == bag_db_id), bags_fresh[index])
+    
     st.write(f"### 💎 {tr('Bag Number')}: {b['bag_number']}")
     st.write(f"**{tr('Customer Name')}:** {b['customer_name']}")
     st.markdown("---")
@@ -274,26 +256,33 @@ def show_bag_details_dialog(index):
             st.image(image, use_container_width=True)
             
     if st.button(tr("Add") + " / " + tr("Update"), type="primary"):
-        b["customer_id"] = cust_id.strip()
+        updated_extra = {
+            "customer_id": cust_id.strip(),
+            "customer_name": b["customer_name"], "bag_number": b["bag_number"], "cost": b["cost"],
+            "is_urgent": b["is_urgent"], "country_code": b["country_code"], "customer_mobile": b["customer_mobile"],
+            "status": b["status"], "status_date": b["status_date"], "notes": b["notes"],
+            "branch_owner": b.get("branch_owner", st.session_state.current_branch), "image_path": b.get("image_path", "")
+        }
         if uploaded_file is not None:
             file_ext = os.path.splitext(uploaded_file.name)[1]
             saved_img_name = f"bag_{b['bag_number']}{file_ext}"
             full_save_path = os.path.join(IMAGE_DIR, saved_img_name)
             with open(full_save_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
-            b["image_path"] = full_save_path
+            updated_extra["image_path"] = full_save_path
             
-        bags_data[index] = b
-        save_data(bags_data)
-        add_to_log(b['bag_number'], b['customer_name'], "Extra details/Image updated", st.session_state.current_branch)
-        st.success("Details updated successfully!")
+        db_update_bag(bag_db_id, updated_extra)
+        db_add_to_log(b['bag_number'], b['customer_name'], "Extra details/Image updated", st.session_state.current_branch)
+        st.success("Details updated in cloud successfully!")
         st.rerun()
 
 # --- القسم الأول: إضافة وتعديل باج (Add Bag) ---
 if choice == "Add Bag":
     st.header(tr("Add Bag") if st.session_state.current_edit_index is None else tr("Update"))
     edit_idx = st.session_state.current_edit_index
-    default_rec = bags_data[edit_idx] if edit_idx is not None else {}
+    
+    # الحصول على البيانات في حالة التعديل بأمان من السيرفر
+    default_rec = bags_data[edit_idx] if (edit_idx is not None and edit_idx < len(bags_data)) else {}
     
     with st.form("bag_form", clear_on_submit=False):
         c1, c2 = st.columns(2)
@@ -325,7 +314,7 @@ if choice == "Add Bag":
                 st.error("Please fill in Customer Name and Bag Number!")
             else:
                 if edit_idx is None and any(str(b["bag_number"]) == bag_no.strip() for b in bags_data):
-                    st.error("Bag Number already exists!")
+                    st.error("Bag Number already exists in database!")
                 else:
                     rec = {
                         "customer_name": cust_name.strip(), "bag_number": bag_no.strip(), "cost": cost.strip() or "0",
@@ -335,14 +324,13 @@ if choice == "Add Bag":
                         "branch_owner": default_rec.get("branch_owner", st.session_state.current_branch)
                     }
                     if edit_idx is None:
-                        bags_data.append(rec)
-                        add_to_log(bag_no.strip(), cust_name.strip(), "New Bag Added", st.session_state.current_branch)
+                        db_save_bag(rec)
+                        db_add_to_log(bag_no.strip(), cust_name.strip(), "New Bag Added", st.session_state.current_branch)
                     else:
-                        bags_data[edit_idx] = rec
+                        db_update_bag(default_rec["id"], rec)
                         st.session_state.current_edit_index = None
-                        add_to_log(bag_no.strip(), cust_name.strip(), "Record Updated", st.session_state.current_branch)
-                    save_data(bags_data)
-                    st.success("Saved successfully!")
+                        db_add_to_log(bag_no.strip(), cust_name.strip(), "Record Updated", st.session_state.current_branch)
+                    st.success("Saved dynamically to Cloud Server!")
                     st.session_state.active_menu = "View / Stats"
                     st.rerun()
                     
@@ -394,7 +382,7 @@ elif choice == "View / Stats":
             check_marks = "✅" * count + "⬜" * (5 - count)
             
             row_entry = {
-                "Index": i, "Type": tag, tr("Customer Name"): b["customer_name"], tr("Bag Number"): b["bag_number"],
+                "Index": i, "DB_ID": b["id"], "Type": tag, tr("Customer Name"): b["customer_name"], tr("Bag Number"): b["bag_number"],
                 tr("Mobile"): full_mob, tr("Cost"): f"{b.get('cost', '0')} AED", tr("Status"): b["status"],
                 tr("Date"): b["status_date"], tr("Reminders"): check_marks
             }
@@ -412,6 +400,7 @@ elif choice == "View / Stats":
             st.session_state.selected_row_idx = 0
             
         actual_bag_index = filtered_data[st.session_state.selected_row_idx]["Index"]
+        bag_db_id = filtered_data[st.session_state.selected_row_idx]["DB_ID"]
         b_selected = bags_data[actual_bag_index]
         num = f"{b_selected.get('country_code','').replace('+','')}{b_selected.get('customer_mobile','')}"
         
@@ -434,7 +423,7 @@ elif choice == "View / Stats":
             )
             url_ready = f"https://api.whatsapp.com/send?phone={num}&text={urllib.parse.quote(msg_ready)}"
             if st.link_button("WhatsApp 📱 Ready Message", url_ready, use_container_width=True, type="primary"):
-                add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Ready Message Sent", st.session_state.current_branch)
+                db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Ready Message Sent", st.session_state.current_branch)
                 
         with act_c2:
             msg_remind = (
@@ -452,21 +441,21 @@ elif choice == "View / Stats":
             )
             url_remind = f"https://api.whatsapp.com/send?phone={num}&text={urllib.parse.quote(msg_remind)}"
             if st.link_button(tr("Send Reminder"), url_remind, use_container_width=True):
-                add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent", st.session_state.current_branch)
+                db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent", st.session_state.current_branch)
                 
         st.markdown("---")
         btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
         
         with btn_manage_col1:
             if st.button(tr("Manage & Details 📝"), use_container_width=True, type="secondary"):
-                show_bag_details_dialog(actual_bag_index)
+                show_bag_details_dialog(actual_bag_index, bag_db_id)
                 
         with btn_manage_col2:
             password_input = st.text_input("Admin Password", type="password", label_visibility="collapsed", placeholder="Enter Password to Edit/Delete")
             
         with btn_manage_col3:
             if st.button(tr("Edit"), use_container_width=True):
-                branch_pass = branch_config["branches"][st.session_state.current_branch]["password"]
+                branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
                 if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
                     st.session_state.current_edit_index = actual_bag_index
                     st.session_state.active_menu = "Add Bag"
@@ -475,14 +464,13 @@ elif choice == "View / Stats":
                 
         with btn_manage_col4:
             if st.button(tr("Delete"), use_container_width=True):
-                branch_pass = branch_config["branches"][st.session_state.current_branch]["password"]
+                branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
                 if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
-                    add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Record Deleted", st.session_state.current_branch)
-                    del bags_data[actual_bag_index]
-                    save_data(bags_data)
+                    db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Record Deleted", st.session_state.current_branch)
+                    db_delete_bag(bag_db_id)
                     st.session_state.current_edit_index = None
                     st.session_state.selected_row_idx = 0
-                    st.success("Record deleted!")
+                    st.success("Deleted from cloud database!")
                     st.rerun()
                 else: st.error("Incorrect Password!")
     else:
@@ -495,8 +483,7 @@ elif choice == "Alerts":
     urgent_alerts, normal_alerts = [], []
     
     for b in bags_data:
-        if b.get("branch_owner", "Yas Mall") != st.session_state.current_branch and not is_super_user:
-            continue
+        if b.get("branch_owner", "Yas Mall") != st.session_state.current_branch and not is_super_user: continue
         if b.get("status") != "Delivered":
             try:
                 d = datetime.strptime(b["status_date"], "%Y-%m-%d")
@@ -562,9 +549,29 @@ elif choice == "Stats":
         else: st.info("No logs found.")
 
     st.markdown("---")
-    with st.expander(f"🔐 {tr('Login History')} (Super Admin Only)"):
+    # شاشة تتبع الفروع وزر الـ Backup السحابي (متاح فقط لأحمد بالباسورد 9999)
+    with st.expander(f"🔐 {tr('Login History')} & {tr('Super Backup')} (Super Admin Only)"):
         if is_super_user:
-            history_display = [{tr("Time"): h["time"], tr("Branch"): h["branch"], "Access Type": h["type"]} for h in reversed(branch_config["login_history"])]
+            # 📥 تنفيذ دمج الحلين: تحميل نسخة احتياطية إكسل كاملة لكل بيانات الشركة حياً من السيرفر
+            st.subheader(tr("Super Backup"))
+            if bags_data:
+                df_backup = pd.DataFrame(bags_data)
+                # إعداد وحفظ ملف إكسل محلي مؤقت للتنزيل
+                df_backup.to_excel("Jawhara_Full_Backup.xlsx", index=False)
+                with open("Jawhara_Full_Backup.xlsx", "rb") as f_backup:
+                    st.download_button(
+                        label="📥 Download Full Database Excel Backup",
+                        data=f_backup.read(),
+                        file_name=f"Jawhara_Enterprise_Backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        type="primary"
+                    )
+            else:
+                st.info("No data available to backup yet.")
+                
+            st.markdown("---")
+            st.subheader(tr("Login History"))
+            history_display = [{tr("Time"): h["time"], tr("Branch"): h["branch"], "Access Type": h["type"]} for h in reversed(db_load_login_history())]
             st.dataframe(history_display, use_container_width=True, hide_index=True)
         else:
-            st.warning("Access Denied. Only Super Admin can view login logs.")
+            st.warning("Access Denied. Only Super Admin can view core metrics and download backups.")
