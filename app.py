@@ -23,6 +23,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 OLD_JSON_FILE = "repair_bags.json"
 IMAGE_DIR = "uploaded_images"
+
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR, exist_ok=True)
 
@@ -31,26 +32,40 @@ ADMIN_PASSWORD = "1234"
 COUNTRY_CODES = ["+971", "+20", "+966", "+965", "+974", "+973", "+968", "+1", "+44"]
 STATUS_OPTIONS = ["Received", "Out for Repair", "Received Back", "Delivered"]
 
+# قائمة الفروع الـ 21 الافتراضية الثابتة لضمان ظهورها حتى لو فشل الاتصال بالسحاب
+HARDCODED_BRANCHES = {
+    "Yas Mall": {"password": "0000"}, "Al Dhafra Mall": {"password": "0000"}, "Khalidiyah Mall": {"password": "0000"},
+    "Marina Mall": {"password": "0000"}, "Mushrif Mall": {"password": "0000"}, "Reem Mall": {"password": "0000"},
+    "Galleria Mall": {"password": "0000"}, "Raha Mall": {"password": "0000"}, "Maqtaa Mall": {"password": "0000"},
+    "Bawabat Al Sharq Mall": {"password": "0000"}, "Deerfields Mall": {"password": "0000"}, "Dalma Mall": {"password": "0000"},
+    "Forsan Mall": {"password": "0000"}, "Al Wahda Mall": {"password": "0000"}, "Abu Dhabi Mall": {"password": "0000"},
+    "MZ1 Shop": {"password": "0000"}, "MZ2 Shop": {"password": "0000"}, "Masdar CC Mall": {"password": "0000"},
+    "Fairuz Dalma Mall": {"password": "0000"}, "Makani Shamkha Mall": {"password": "0000"}, "Madinati Mall": {"password": "0000"}
+}
+
 # --- دالات التعامل مع السيرفر السحابي بدلاً من ملفات الـ JSON القديمة ---
 def db_load_branches():
     try:
         res = supabase.table("branch_settings").select("*").execute()
-        return {item["branch_name"]: {"password": item["password"]} for item in res.data}
+        if res.data and len(res.data) > 0:
+            return {item["branch_name"]: {"password": item["password"]} for item in res.data}
+        return HARDCODED_BRANCHES
     except:
-        return {}
+        return HARDCODED_BRANCHES
 
 def db_update_branch_password(branch_name, new_pass):
-    supabase.table("branch_settings").update({"password": new_pass}).eq("branch_name", branch_name).execute()
+    try: supabase.table("branch_settings").update({"password": new_pass}).eq("branch_name", branch_name).execute()
+    except: pass
 
 def db_add_new_branch(branch_name, password):
-    supabase.table("branch_settings").insert({"branch_name": branch_name, "password": password}).execute()
+    try: supabase.table("branch_settings").insert({"branch_name": branch_name, "password": password}).execute()
+    except: pass
 
 def db_load_bags():
     try:
         res = supabase.table("repair_bags").select("*").order("id", desc=False).execute()
         return res.data
-    except:
-        return []
+    except: return []
 
 def db_save_bag(bag_data):
     if "id" in bag_data: del bag_data["id"]
@@ -70,9 +85,11 @@ def db_load_logs():
     except: return []
 
 def db_add_to_log(bag_number, customer_name, action, branch_name):
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_entry = {"time": now, "bag": str(bag_number), "customer": customer_name, "action": action, "branch": branch_name}
-    supabase.table("actions_log").insert(log_entry).execute()
+    try:
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = {"time": now, "bag": str(bag_number), "customer": customer_name, "action": action, "branch": branch_name}
+        supabase.table("actions_log").insert(log_entry).execute()
+    except: pass
 
 def db_load_login_history():
     try:
@@ -81,8 +98,10 @@ def db_load_login_history():
     except: return []
 
 def db_add_login_history(branch_name, login_type):
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    supabase.table("login_history").insert({"time": now_str, "branch": branch_name, "type": login_type}).execute()
+    try:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        supabase.table("login_history").insert({"time": now_str, "branch": branch_name, "type": login_type}).execute()
+    except: pass
 
 # --- إدارة حالة التطبيق الجارية (Session State) ---
 if "language" not in st.session_state: st.session_state.language = "en"
@@ -93,7 +112,7 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "current_branch" not in st.session_state: st.session_state.current_branch = None
 if "last_branch_selection" not in st.session_state: st.session_state.last_branch_selection = "Yas Mall"
 
-# تحميل بيانات الفروع السحابية حياً
+# تحميل بيانات الفروع الآمنة
 branches_data_cloud = db_load_branches()
 
 # --- قاموس الترجمة الموحد ---
@@ -135,7 +154,7 @@ if not st.session_state.logged_in:
     col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
     with col_l2:
         st.write("### 🔑 Branch Secure Login")
-        branches_list = list(branches_data_cloud.keys()) if branches_data_cloud else ["Yas Mall"]
+        branches_list = list(branches_data_cloud.keys())
         
         try: last_idx = branches_list.index(st.session_state.last_branch_selection)
         except: last_idx = 0
@@ -165,10 +184,15 @@ bags_data = db_load_bags()
 actions_log = db_load_logs()
 
 # التحقق هل المستخدم الحالي هو الإدمن العام أحمد
-is_super_user = st.session_state.logged_in and (st.session_state.last_branch_selection in branches_data_cloud) and any(
-    h.get("branch") == st.session_state.current_branch and h.get("type") == "Super Admin Bypass" 
-    for h in db_load_login_history()
-)
+is_super_user = False
+try:
+    history = db_load_login_history()
+    is_super_user = st.session_state.logged_in and any(
+        h.get("branch") == st.session_state.current_branch and h.get("type") == "Super Admin Bypass" 
+        for h in history
+    )
+except:
+    pass
 
 menu_mapping = {
     tr("Add Bag"): "Add Bag",
@@ -204,7 +228,7 @@ with st.sidebar:
         old_p = st.text_input(tr("Old Password"), type="password")
         new_p = st.text_input(tr("New Password"), type="password")
         if st.button(tr("Save Password"), use_container_width=True):
-            actual_old = branches_data_cloud[st.session_state.current_branch]["password"]
+            actual_old = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
             if old_p == actual_old or old_p == SUPER_ADMIN_PASSWORD:
                 if len(new_p.strip()) > 0:
                     db_update_branch_password(st.session_state.current_branch, new_p.strip())
@@ -550,7 +574,6 @@ elif choice == "Stats":
         if is_super_user:
             st.subheader("⚙️ Data Sync Tools")
             
-            # زر سحب واستيراد البيانات القديمة من ملف الـ JSON لـ Supabase
             if os.path.exists(OLD_JSON_FILE):
                 if st.button("⚙️ Import Data From Old JSON to Cloud", type="secondary"):
                     try:
@@ -559,7 +582,6 @@ elif choice == "Stats":
                         if old_data:
                             imported_count = 0
                             for old_bag in old_data:
-                                # حماية من التكرار بناء على رقم الباج
                                 if not any(str(b["bag_number"]) == str(old_bag["bag_number"]) for b in bags_data):
                                     if "id" in old_bag: del old_bag["id"]
                                     if "branch_owner" not in old_bag: old_bag["branch_owner"] = "Yas Mall"
@@ -592,7 +614,9 @@ elif choice == "Stats":
                 
             st.markdown("---")
             st.subheader(tr("Login History"))
-            history_display = [{tr("Time"): h["time"], tr("Branch"): h["branch"], "Access Type": h["type"]} for h in reversed(db_load_login_history())]
-            st.dataframe(history_display, use_container_width=True, hide_index=True)
+            try:
+                history_display = [{tr("Time"): h["time"], tr("Branch"): h["branch"], "Access Type": h["type"]} for h in reversed(db_load_login_history())]
+                st.dataframe(history_display, use_container_width=True, hide_index=True)
+            except: st.info("No history available.")
         else:
             st.warning("Access Denied. Only Super Admin can view core metrics and download backups.")
