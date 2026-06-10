@@ -24,7 +24,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 OLD_JSON_FILE = "repair_bags.json"
 IMAGE_DIR = "uploaded_images"
 if not os.path.exists(IMAGE_DIR):
-    os.makedirs(IMAGE_DIR)
+    os.makedirs(IMAGE_DIR, exist_ok=True
 
 SUPER_ADMIN_PASSWORD = "9999" # باسورد الإدمن العام الخاصة بأحمد
 ADMIN_PASSWORD = "1234"
