@@ -32,7 +32,7 @@ ADMIN_PASSWORD = "1234"
 COUNTRY_CODES = ["+971", "+20", "+966", "+965", "+974", "+973", "+968", "+1", "+44"]
 STATUS_OPTIONS = ["Received", "Out for Repair", "Received Back", "Delivered"]
 
-# قائمة الفروع الـ 21 الافتراضية الثابتة لضمان ظهورها حتى لو فشل الاتصال بالسحاب
+# قائمة الفروع الـ 21 الافتراضية
 HARDCODED_BRANCHES = {
     "Yas Mall": {"password": "0000"}, "Al Dhafra Mall": {"password": "0000"}, "Khalidiyah Mall": {"password": "0000"},
     "Marina Mall": {"password": "0000"}, "Mushrif Mall": {"password": "0000"}, "Reem Mall": {"password": "0000"},
@@ -572,9 +572,13 @@ elif choice == "Stats":
     # شاشة تتبع الدخول وزر الاستيراد والسحب الاحتياطي
     with st.expander(f"🔐 {tr('Login History')} & {tr('Super Backup')} (Super Admin Only)"):
         if is_super_user:
-            st.subheader("⚙️ Data Sync Tools")
+            st.subheader("⚙️ Data Sync & Migration Tools")
             
             if os.path.exists(OLD_JSON_FILE):
+                # 🌟 الميزة الذكية الجديدة: اختيار اسم الفرع قبل الاستيراد 🌟
+                st.write("📢 Select target branch for the JSON backup data:")
+                target_import_branch = st.selectbox("Target Import Branch", list(branches_data_cloud.keys()), key="import_tgt")
+                
                 if st.button("⚙️ Import Data From Old JSON to Cloud", type="secondary"):
                     try:
                         with open(OLD_JSON_FILE, "r", encoding="utf-8") as f_old:
@@ -584,10 +588,11 @@ elif choice == "Stats":
                             for old_bag in old_data:
                                 if not any(str(b["bag_number"]) == str(old_bag["bag_number"]) for b in bags_data):
                                     if "id" in old_bag: del old_bag["id"]
-                                    if "branch_owner" not in old_bag: old_bag["branch_owner"] = "Yas Mall"
+                                    # إسناد الداتا للفرع اللي اخترته من القائمة
+                                    old_bag["branch_owner"] = target_import_branch
                                     db_save_bag(old_bag)
                                     imported_count += 1
-                            st.success(f"Successfully imported {imported_count} record(s) to Supabase Cloud!")
+                            st.success(f"Successfully imported {imported_count} record(s) directly locked to '{target_import_branch}' branch!")
                             st.rerun()
                         else:
                             st.warning("Old JSON file is empty.")
