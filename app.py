@@ -17,7 +17,7 @@ st.set_page_config(
 
 # --- ربط قاعدة البيانات السحابية (Supabase) ---
 SUPABASE_URL = "https://aarksbtetlwjzicmzoql.supabase.co"
-SUPABASE_KEY = "sb_publishable_GjSxULJ5BszOVvr6XSdnYw_1Cb8HOyH"
+SUPABASE_KEY = "sb_publishable_GjSxULJ5BszOVvr6XSdnYw_1Cb8HOyH" # المفتاح الجديد النشط والمضمون
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -190,7 +190,6 @@ if not st.session_state.logged_in:
 bags_data = db_load_bags()
 actions_log = db_load_logs()
 
-# التحقق هل المستخدم الحالي هو الإدمن العام أحمد مباشرة من الجلسة الجارية
 is_super_user = st.session_state.is_super_admin
 
 menu_mapping = {
@@ -280,9 +279,12 @@ def show_bag_details_dialog(index, bag_db_id):
     if st.button(tr("Add") + " / " + tr("Update"), type="primary"):
         updated_extra = {
             "customer_id": cust_id.strip(),
-            "customer_name": b["customer_name"], "bag_number": b["bag_number"], "cost": b["cost"],
+            "customer_name": b["customer_name"], "bag_number": b["bag_number"], "cost": str(b["cost"]),
             "is_urgent": b["is_urgent"], "country_code": b["country_code"], "customer_mobile": b["customer_mobile"],
             "status": b["status"], "status_date": b["status_date"], "notes": b["notes"],
+            "price": b.get("price", 0.0), "created_by": b.get("created_by", "System"),
+            "created_date": b.get("created_date", ""), "last_notification_date": b.get("last_notification_date", None),
+            "reminders_count": b.get("reminders_count", 0),
             "branch_owner": b.get("branch_owner", st.session_state.current_branch), "image_path": b.get("image_path", "")
         }
         if uploaded_file is not None:
@@ -309,9 +311,9 @@ if choice == "Add Bag":
         with c1:
             cust_name = st.text_input(tr("Customer Name"), value=default_rec.get("customer_name", ""))
             bag_no = st.text_input(tr("Bag Number"), value=default_rec.get("bag_number", ""))
-            cost = st.text_input(tr("Cost"), value=default_rec.get("cost", "0"))
+            cost = st.text_input(tr("Cost"), value=str(default_rec.get("cost", "0")))
         with c2:
-            is_urgent = st.checkbox(tr("Urgent"), value=default_rec.get("is_urgent", False))
+            is_urgent = st.checkbox(tr("Urgent"), value=bool(default_rec.get("is_urgent", False)))
             try: def_date = datetime.strptime(default_rec.get("status_date", ""), "%Y-%m-%d").date()
             except: def_date = datetime.today().date()
             status_date = st.date_input(tr("Date"), value=def_date)
@@ -341,6 +343,10 @@ if choice == "Add Bag":
                         "is_urgent": is_urgent, "country_code": country_code, "customer_mobile": mob_num.strip(),
                         "status": status, "status_date": str(status_date), "notes": notes.strip(),
                         "customer_id": default_rec.get("customer_id", ""), "image_path": default_rec.get("image_path", ""),
+                        "price": default_rec.get("price", 0.0), "created_by": default_rec.get("created_by", "System"),
+                        "created_date": default_rec.get("created_date", datetime.now().strftime("%Y-%m-%d")),
+                        "last_notification_date": default_rec.get("last_notification_date", None),
+                        "reminders_count": default_rec.get("reminders_count", 0),
                         "branch_owner": default_rec.get("branch_owner", st.session_state.current_branch)
                     }
                     if edit_idx is None:
@@ -398,8 +404,8 @@ elif choice == "View / Stats":
                 elif b.get("is_urgent", False): tag = "⚡ URGENT ACTIVE"
             elif b.get("is_urgent", False) and is_del: tag = "✅ URGENT DELIVERED"
                 
-            count = sum(1 for log in actions_log if str(log.get('bag')) == bag_no_str and log.get('action') == "Reminder Sent")
-            check_marks = "✅" * count + "⬜" * (5 - count)
+            count = b.get("reminders_count", 0)
+            check_marks = "✅" * count + "⬜" * max(0, (5 - count))
             
             row_entry = {
                 "Index": i, "DB_ID": b["id"], "Type": tag, tr("Customer Name"): b["customer_name"], tr("Bag Number"): b["bag_number"],
@@ -461,7 +467,14 @@ elif choice == "View / Stats":
             )
             url_remind = f"https://api.whatsapp.com/send?phone={num}&text={urllib.parse.quote(msg_remind)}"
             if st.link_button(tr("Send Reminder"), url_remind, use_container_width=True):
+                # زيادة عداد التذكيرات وحفظ تاريخ الإرسال
+                new_count = int(b_selected.get("reminders_count", 0)) + 1
+                supabase.table("repair_bags").update({
+                    "reminders_count": new_count,
+                    "last_notification_date": datetime.now().strftime("%Y-%m-%d")
+                }).eq("id", bag_db_id).execute()
                 db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent", st.session_state.current_branch)
+                st.rerun()
                 
         st.markdown("---")
         btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
@@ -529,7 +542,7 @@ elif choice == "Stats":
     st.header(tr("Stats"))
     
     visible_bags = [b for b in bags_data if b.get("branch_owner", "Yas Mall") == st.session_state.current_branch or is_super_user]
-    income = sum(float(b.get("cost", 0)) for b in visible_bags if b.get("status") == "Delivered")
+    income = sum(float(str(b.get("cost", 0)).replace(',', '')) for b in visible_bags if b.get("status") == "Delivered" and str(b.get("cost", 0)).replace('.', '', 1).isdigit())
     
     counts = {
         "Total Bags": len(visible_bags), "Received": sum(1 for b in visible_bags if b["status"] == "Received"),
@@ -554,7 +567,8 @@ elif choice == "Stats":
             m = datetime.strptime(b["status_date"], "%Y-%m-%d").strftime("%Y-%m (%B)")
             if m not in m_stats: m_stats[m] = {"count": 0, "income": 0}
             m_stats[m]["count"] += 1
-            if b["status"] == "Delivered": m_stats[m]["income"] += float(b.get("cost", 0))
+            if b["status"] == "Delivered" and str(b.get("cost", 0)).replace('.', '', 1).isdigit(): 
+                m_stats[m]["income"] += float(str(b.get("cost", 0)).replace(',', ''))
         except: continue
             
     if m_stats:
@@ -569,7 +583,7 @@ elif choice == "Stats":
         else: st.info("No logs found.")
 
     st.markdown("---")
-    # شاشة تتبع الدخول وزر الاستيراد والسحب الاحتياطي
+    # شاشة تتبع الدخول وزر الاستيراد والسحب الاحتياطي للـ Super Admin
     with st.expander(f"🔐 {tr('Login History')} & {tr('Super Backup')} (Super Admin Only)"):
         if is_super_user:
             st.subheader("⚙️ Data Sync & Migration Tools")
@@ -586,9 +600,26 @@ elif choice == "Stats":
                             imported_count = 0
                             for old_bag in old_data:
                                 if not any(str(b["bag_number"]) == str(old_bag["bag_number"]) for b in bags_data):
-                                    if "id" in old_bag: del old_bag["id"]
-                                    old_bag["branch_owner"] = target_import_branch
-                                    db_save_bag(old_bag)
+                                    # بناء السجل بالمفاتيح الجديدة المطابقة للـ JSON الجديد تماماً
+                                    cloud_bag_record = {
+                                        "customer_name": old_bag.get("customer_name", ""),
+                                        "bag_number": str(old_bag.get("bag_number", "")),
+                                        "customer_mobile": str(old_bag.get("customer_mobile", "")),
+                                        "status": old_bag.get("status", "Received"),
+                                        "status_date": old_bag.get("status_date", ""),
+                                        "notes": old_bag.get("notes", ""),
+                                        "is_urgent": bool(old_bag.get("is_urgent", False)),
+                                        "last_notification_date": old_bag.get("last_notification_date", None),
+                                        "price": float(old_bag.get("price", 0.0)),
+                                        "cost": str(old_bag.get("cost", "0")),
+                                        "created_by": old_bag.get("created_by", "System"),
+                                        "created_date": old_bag.get("created_date", ""),
+                                        "country_code": old_bag.get("country_code", "+971"),
+                                        "reminders_count": int(old_bag.get("reminders_count", 0)),
+                                        "branch_owner": target_import_branch, # قفل الداتا على الفرع المختار
+                                        "image_path": ""
+                                    }
+                                    db_save_bag(cloud_bag_record)
                                     imported_count += 1
                             st.success(f"Successfully imported {imported_count} record(s) directly locked to '{target_import_branch}' branch!")
                             st.rerun()
