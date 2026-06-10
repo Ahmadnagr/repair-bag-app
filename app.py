@@ -111,6 +111,7 @@ if "active_menu" not in st.session_state: st.session_state.active_menu = "Add Ba
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "current_branch" not in st.session_state: st.session_state.current_branch = None
 if "last_branch_selection" not in st.session_state: st.session_state.last_branch_selection = "Yas Mall"
+if "is_super_admin" not in st.session_state: st.session_state.is_super_admin = False
 
 # تحميل بيانات الفروع الآمنة
 branches_data_cloud = db_load_branches()
@@ -170,7 +171,13 @@ if not st.session_state.logged_in:
                 st.session_state.current_branch = selected_branch
                 st.session_state.last_branch_selection = selected_branch
                 
-                login_type = "Super Admin Bypass" if password_input == SUPER_ADMIN_PASSWORD else "Standard Branch Login"
+                if password_input == SUPER_ADMIN_PASSWORD:
+                    st.session_state.is_super_admin = True
+                    login_type = "Super Admin Bypass"
+                else:
+                    st.session_state.is_super_admin = False
+                    login_type = "Standard Branch Login"
+                    
                 db_add_login_history(selected_branch, login_type)
                 
                 st.success(f"Welcome back, {selected_branch}!")
@@ -183,16 +190,8 @@ if not st.session_state.logged_in:
 bags_data = db_load_bags()
 actions_log = db_load_logs()
 
-# التحقق هل المستخدم الحالي هو الإدمن العام أحمد
-is_super_user = False
-try:
-    history = db_load_login_history()
-    is_super_user = st.session_state.logged_in and any(
-        h.get("branch") == st.session_state.current_branch and h.get("type") == "Super Admin Bypass" 
-        for h in history
-    )
-except:
-    pass
+# التحقق هل المستخدم الحالي هو الإدمن العام أحمد مباشرة من الجلسة الجارية
+is_super_user = st.session_state.is_super_admin
 
 menu_mapping = {
     tr("Add Bag"): "Add Bag",
@@ -254,6 +253,7 @@ with st.sidebar:
     if st.button(tr("Logout"), type="primary", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.current_branch = None
+        st.session_state.is_super_admin = False
         st.rerun()
 
 # --- نافذة التفاصيل والبيانات الإضافية ---
@@ -575,7 +575,6 @@ elif choice == "Stats":
             st.subheader("⚙️ Data Sync & Migration Tools")
             
             if os.path.exists(OLD_JSON_FILE):
-                # 🌟 الميزة الذكية الجديدة: اختيار اسم الفرع قبل الاستيراد 🌟
                 st.write("📢 Select target branch for the JSON backup data:")
                 target_import_branch = st.selectbox("Target Import Branch", list(branches_data_cloud.keys()), key="import_tgt")
                 
@@ -588,7 +587,6 @@ elif choice == "Stats":
                             for old_bag in old_data:
                                 if not any(str(b["bag_number"]) == str(old_bag["bag_number"]) for b in bags_data):
                                     if "id" in old_bag: del old_bag["id"]
-                                    # إسناد الداتا للفرع اللي اخترته من القائمة
                                     old_bag["branch_owner"] = target_import_branch
                                     db_save_bag(old_bag)
                                     imported_count += 1
