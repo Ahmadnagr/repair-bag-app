@@ -17,7 +17,7 @@ st.set_page_config(
 
 # --- ربط قاعدة البيانات السحابية (Supabase) ---
 SUPABASE_URL = "https://aarksbtetlwjzicmzoql.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhcmtzYnRldGx3anppY216b3FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkzNjI2NzcsImV4cCI6MjA2NDkzODY3N30.i96O02ZfKjVpE9SAn8gEOf0vU5FfA7vXjXN7v6vH9_w"
+SUPABASE_KEY = "sb_publishable_GjSxULJ5BszOVvr6XSdnYw_1Cb8HOyH"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
