@@ -148,7 +148,7 @@ def tr(text):
         "Normal Bags Overdue (15+ Days)": "الباجات العادية المتأخرة (15+ يوم)",
         "Customer ID": "رقم هوية الزبون", "Receipt Image": "صورة الاستلام",
         "Manage & Details 📝": "إدارة وتفاصيل الباج 📝", "Branch Settings": "إعدادات الفرع الأمنية",
-        "Change Password": "تغيير كلمة المرور الخاصة بالفرع", "Old Password": "كلمة المرور القديمة",
+        "Change Password": "تغيير كلمة运行 كلمة المرور الخاصة بالفرع", "Old Password": "كلمة المرور القديمة",
         "New Password": "كلمة المرور الجديدة", "Save Password": "حفظ كلمة المرور الجديدة",
         "Login History": "سجل دخول الأجهزة للفروع", "Branch": "الفرع", "Logout": "تسجيل الخروج 🚪",
         "Add New Branch": "إضافة فرع جديد للسيستم 🏢", "Branch Name": "اسم الفرع الجديد", "Branch Password": "باسورد الفرع الجديد",
@@ -379,10 +379,11 @@ if choice == "Add Bag":
                     st.session_state.active_menu = "View / Stats"
                     st.rerun()
 
-# --- القسم الثاني: عرض البيانات والبحث الذكي وبانل التحكم الثابتة المصلحة ---
+# --- القسم الثاني: عرض البيانات وبانل التحكم الثابتة والأكيدة 100% ---
 elif choice == "View / Stats":
     st.header(tr("View / Stats"))
     
+    # لوحة البحث العامة للجدول فوق
     f1, f2, f3, f4 = st.columns(4)
     with f1: q_name = st.text_input(tr("Search By Name")).lower()
     with f2: q_bag = st.text_input(tr("Search By Bag")).lower()
@@ -390,6 +391,8 @@ elif choice == "View / Stats":
     with f4: filter_status = st.selectbox(tr("Filter Status:"), [tr("All"), "Received", "Out for Repair", "Received Back", "Delivered", tr("Urgent")])
 
     filtered_data = []
+    # مصفوفة لحفظ ترتيب الـ JSON الأصلي للباجات الظاهرة فقط
+    allowed_indices = []
     today = datetime.today()
     
     for i, b in enumerate(bags_data):
@@ -433,7 +436,9 @@ elif choice == "View / Stats":
             if is_super_user:
                 row_entry["Branch"] = b.get("branch_owner", "Yas Mall")
             filtered_data.append(row_entry)
+            allowed_indices.append((str(b.get("bag_number")).strip(), i))
 
+    # عرض جدول البيانات المستقر تماماً بدون أي خاصية كاش تهنج الصفحة
     if filtered_data:
         st.dataframe(filtered_data, use_container_width=True, hide_index=True)
     else:
@@ -441,20 +446,26 @@ elif choice == "View / Stats":
 
     st.markdown("---")
     
-    # 🌟 لوحة التحكم السريعة الثابتة 🌟
+    # 🌟 لوحة الإدارة الستة الثابتة والمفتوحة في الصفحة 24 ساعة 🌟
     st.markdown("### 🛠️ Quick Action Control Panel / لوحة التحكم السريعة في الباجات")
     
-    target_bag_input = st.text_input("✍️ Enter Bag Number to execute Action / اكتب رقم الباج للتحكم فيها مباشرة:", placeholder="e.g. 119602")
+    # استخراج قائمة أرقام الباجات المتاحة في البحث الحالي لتسهيل الاختيار الفوري
+    available_bags_list = [item[0] for item in allowed_indices]
     
-    if target_bag_input.strip():
-        found_idx = next((idx for idx, b in enumerate(bags_data) if str(b.get("bag_number")).strip() == target_bag_input.strip()), None)
+    if available_bags_list:
+        # قائمة اختيار أوتوماتيكية من الباجات الظاهرة فوق لمنع أي حجب للزراير
+        selected_target_bag = st.selectbox("🎯 Select Bag Number to apply actions / اختر رقم الباج لتنفيذ العمليات عليها فوراً:", available_bags_list)
         
-        if found_idx is not None:
-            b_selected = bags_data[found_idx]
+        # لقط الـ Index المقابل للباج المختارة مباشرة
+        actual_json_index = next((item[1] for item in allowed_indices if item[0] == selected_target_bag), None)
+        
+        if actual_json_index is not None:
+            b_selected = bags_data[actual_json_index]
             num = f"{b_selected.get('country_code','').replace('+','')}{b_selected.get('customer_mobile','')}"
-            st.success(f"🎯 **Found:** Bag #{b_selected['bag_number']} belongs to (*{b_selected['customer_name']}*) | Current Status: {b_selected['status']}")
             
-            # زراير رسايل الواتساب والتذكير
+            st.success(f"🟢 **Active:** Bag #{b_selected['bag_number']} belongs to (*{b_selected['customer_name']}*) | Cost: {b_selected['cost']} AED")
+            
+            # زراير رسائل الواتساب
             act_c1, act_c2 = st.columns(2)
             with act_c1:
                 msg_ready = (
@@ -489,43 +500,44 @@ elif choice == "View / Stats":
                 )
                 url_remind = f"https://api.whatsapp.com/send?phone={num}&text={urllib.parse.quote(msg_remind)}"
                 if st.link_button(tr("Send Reminder"), url_remind, use_container_width=True):
-                    bags_data[found_idx]["reminders_count"] = int(b_selected.get("reminders_count", 0)) + 1
-                    bags_data[found_idx]["last_notification_date"] = datetime.now().strftime("%Y-%m-%d")
+                    bags_data[actual_json_index]["reminders_count"] = int(b_selected.get("reminders_count", 0)) + 1
+                    bags_data[actual_json_index]["last_notification_date"] = datetime.now().strftime("%Y-%m-%d")
                     save_json_data(DATA_FILE, bags_data)
                     db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent Fixed", st.session_state.current_branch)
                     st.rerun()
             
             st.markdown("---")
-            # 🛠️ تصحيح الربط هنا بإدخال الزراير جوه الـ columns بالمسطرة (مع التفعيل الفوري) 🛠️
+            
+            # 🛠️ الأزرار الأربعة مثبتة حياً جوة الـ Columns بالـ st. المظبوطة ومستحيل تتحجب 🛠️
             btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
             
             with btn_manage_col1:
-                if st.button(tr("Manage & Details 📝"), use_container_width=True, type="secondary"):
-                    show_bag_details_dialog(found_idx)
+                if btn_manage_col1.button(tr("Manage & Details 📝"), use_container_width=True, type="secondary"):
+                    show_bag_details_dialog(actual_json_index)
                     
             with btn_manage_col2:
-                password_input = st.text_input("Admin Password", type="password", label_visibility="collapsed", placeholder="Password to Edit/Delete", key="admin_panel_p")
+                password_input = btn_manage_col2.text_input("Admin Password", type="password", label_visibility="collapsed", placeholder="Password to Edit/Delete", key="admin_panel_p")
                 
             with btn_manage_col3:
-                if st.button(tr("Edit"), use_container_width=True):
+                if btn_manage_col3.button(tr("Edit"), use_container_width=True):
                     branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
                     if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
-                        st.session_state.current_edit_index = found_idx
+                        st.session_state.current_edit_index = actual_json_index
                         st.session_state.active_menu = "Add Bag"
                         st.rerun()
                     else: st.error("Incorrect Password!")
                     
             with btn_manage_col4:
-                if st.button(tr("Delete"), use_container_width=True):
+                if btn_manage_col4.button(tr("Delete"), use_container_width=True):
                     branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
                     if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
                         db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Record Deleted", st.session_state.current_branch)
-                        db_delete_bag(found_idx)
+                        db_delete_bag(actual_json_index)
                         st.success("Deleted successfully!")
                         st.rerun()
                     else: st.error("Incorrect Password!")
-        else:
-            st.warning("Bag Number not found in database / رقم الباج مش موجود.")
+    else:
+        st.info("Please search or filter above to load bags into Action Panel.")
 
 # --- القسم الثالث: التنبيهات 📢 ---
 elif choice == "Alerts":
