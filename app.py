@@ -35,11 +35,10 @@ if not os.path.exists(BRANCH_FILE):
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR, exist_ok=True)
 
-SUPER_ADMIN_PASSWORD = "9999" # باسورد الإدمن العام الخاصة بأحمد
+SUPER_ADMIN_PASSWORD = "9999"
 COUNTRY_CODES = ["+971", "+20", "+966", "+965", "+974", "+973", "+968", "+1", "+44"]
 STATUS_OPTIONS = ["Received", "Out for Repair", "Received Back", "Delivered"]
 
-# قائمة الفروع الـ 21 الثابتة والآمنة بالسيستم
 HARDCODED_BRANCHES = {
     "Yas Mall": {"password": "0000"}, "Al Dhafra Mall": {"password": "0000"}, "Khalidiyah Mall": {"password": "0000"},
     "Marina Mall": {"password": "0000"}, "Mushrif Mall": {"password": "0000"}, "Reem Mall": {"password": "0000"},
@@ -50,11 +49,40 @@ HARDCODED_BRANCHES = {
     "Fairuz Dalma Mall": {"password": "0000"}, "Makani Shamkha Mall": {"password": "0000"}, "Madinati Mall": {"password": "0000"}
 }
 
+# --- دوال مساعدة للتحويل الآمن ---
+def safe_float_convert(val):
+    """تحويل آمن لأي قيمة إلى float"""
+    try:
+        return float(str(val).replace(',', ''))
+    except (ValueError, TypeError):
+        return 0.0
+
+def safe_int_convert(val):
+    """تحويل آمن لأي قيمة إلى int"""
+    try:
+        return int(str(val).replace(',', ''))
+    except (ValueError, TypeError):
+        return 0
+
+def parse_date(date_string):
+    """تحويل آمن للتاريخ"""
+    try:
+        return datetime.strptime(date_string, "%Y-%m-%d").date() if date_string else datetime.today().date()
+    except (ValueError, TypeError):
+        return datetime.today().date()
+
+def format_whatsapp_number(country_code, mobile):
+    """تنسيق رقم الجوال للواتساب بشكل صحيح"""
+    mobile_clean = str(mobile).strip().lstrip('0')
+    return f"{country_code.replace('+', '')}{mobile_clean}"
+
 # --- دالات إدارة بيانات الـ JSON ---
 def load_json_pure(file_path, default_val=[]):
     try:
-        with open(file_path, "r", encoding="utf-8") as f: return json.load(f)
-    except: return default_val
+        with open(file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return default_val
 
 def save_json_pure(file_path, data):
     with open(file_path, "w", encoding="utf-8") as f:
@@ -78,11 +106,20 @@ def db_add_new_branch(branch_name, password):
     branches[branch_name] = {"password": password}
     save_json_pure(BRANCH_FILE, branches)
 
-def load_config(): return load_json_pure(CONFIG_FILE, {"store_name": "Jawhara Yas Mall"})
-def save_config(config): save_json_pure(CONFIG_FILE, config)
-def load_data(): return load_json_pure(DATA_FILE, [])
-def save_data(data): save_json_pure(DATA_FILE, data)
-def load_logs(): return load_json_pure(LOG_FILE, [])
+def load_config():
+    return load_json_pure(CONFIG_FILE, {"store_name": "Jawhara Yas Mall"})
+
+def save_config(config):
+    save_json_pure(CONFIG_FILE, config)
+
+def load_data():
+    return load_json_pure(DATA_FILE, [])
+
+def save_data(data):
+    save_json_pure(DATA_FILE, data)
+
+def load_logs():
+    return load_json_pure(LOG_FILE, [])
 
 def add_to_log(bag_number, customer_name, action, branch_name="System"):
     logs = load_logs()
@@ -90,7 +127,9 @@ def add_to_log(bag_number, customer_name, action, branch_name="System"):
     logs.append({"time": now, "bag": str(bag_number), "customer": customer_name, "action": action, "branch": branch_name})
     save_json_pure(LOG_FILE, logs)
 
-def db_load_login_history(): return load_json_pure(LOGIN_HIST_FILE, [])
+def db_load_login_history():
+    return load_json_pure(LOGIN_HIST_FILE, [])
+
 def db_add_login_history(branch_name, login_type):
     hist = db_load_login_history()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -98,14 +137,26 @@ def db_add_login_history(branch_name, login_type):
     save_json_pure(LOGIN_HIST_FILE, hist)
 
 # --- إدارة حالة الجلسة (Session State) ---
-if "language" not in st.session_state: st.session_state.language = "en"
-if "current_edit_index" not in st.session_state: st.session_state.current_edit_index = None
-if "selected_row_idx" not in st.session_state: st.session_state.selected_row_idx = 0
-if "active_menu" not in st.session_state: st.session_state.active_menu = "Add Bag"
-if "logged_in" not in st.session_state: st.session_state.logged_in = False
-if "current_branch" not in st.session_state: st.session_state.current_branch = None
-if "last_branch_selection" not in st.session_state: st.session_state.last_branch_selection = "Yas Mall"
-if "is_super_admin" not in st.session_state: st.session_state.is_super_admin = False
+if "language" not in st.session_state:
+    st.session_state.language = "en"
+if "current_edit_index" not in st.session_state:
+    st.session_state.current_edit_index = None
+if "selected_row_idx" not in st.session_state:
+    st.session_state.selected_row_idx = 0
+if "active_menu" not in st.session_state:
+    st.session_state.active_menu = "Add Bag"
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "current_branch" not in st.session_state:
+    st.session_state.current_branch = None
+if "last_branch_selection" not in st.session_state:
+    st.session_state.last_branch_selection = "Yas Mall"
+if "is_super_admin" not in st.session_state:
+    st.session_state.is_super_admin = False
+if "confirm_delete" not in st.session_state:
+    st.session_state.confirm_delete = False
+if "delete_target_index" not in st.session_state:
+    st.session_state.delete_target_index = None
 
 # تحميل الإعدادات والفروع
 app_config = load_config()
@@ -136,12 +187,14 @@ def tr(text):
         "New Password": "كلمة المرور الجديدة", "Save Password": "حفظ كلمة المرور الجديدة",
         "Login History": "سجل دخول الأجهزة للفروع", "Branch": "الفرع", "Logout": "تسجيل الخروج 🚪",
         "Add New Branch": "إضافة فرع جديد للسيستم 🏢", "Branch Name": "اسم الفرع الجديد", "Branch Password": "باسورد الفرع الجديد",
-        "Super Backup": "نسخة احتياطية كاملة للشركة 📥"
+        "Super Backup": "نسخة احتياطية كاملة للشركة 📥", "Confirm Delete": "تأكيد الحذف",
+        "Are you sure you want to delete this bag?": "هل أنت متأكد من حذف هذه الحقيبة؟",
+        "Yes, Delete": "نعم، احذف", "Cancel": "إلغاء"
     }
     return translations.get(text, text) if st.session_state.language == "ar" else text
 
 # ==========================================
-# --- 1. شاشة تسجيل الدخول المضمونة لكل فرع ---
+# --- 1. شاشة تسجيل الدخول ---
 # ==========================================
 if not st.session_state.logged_in:
     st.markdown("<h1 style='text-align: center; color: #1f538d;'>💎 Jawhara Management System</h1>", unsafe_allow_html=True)
@@ -151,8 +204,10 @@ if not st.session_state.logged_in:
     with col_l2:
         st.write("### 🔑 Branch Secure Login")
         branches_list = list(branches_data_cloud.keys())
-        try: last_idx = branches_list.index(st.session_state.last_branch_selection)
-        except: last_idx = 0
+        try:
+            last_idx = branches_list.index(st.session_state.last_branch_selection)
+        except:
+            last_idx = 0
         selected_branch = st.selectbox("Choose Branch / اختر الفرع", branches_list, index=last_idx)
         password_input = st.text_input("Enter Password / أدخل كلمة المرور", type="password")
         
@@ -166,7 +221,8 @@ if not st.session_state.logged_in:
                 db_add_login_history(selected_branch, "Super Admin Bypass" if st.session_state.is_super_admin else "Standard Branch Login")
                 st.success(f"Welcome back, {selected_branch}!")
                 st.rerun()
-            else: st.error("Incorrect Password! Please try again.")
+            else:
+                st.error("Incorrect Password! Please try again.")
     st.stop()
 
 # تحميل البيانات بعد شاشة الدخول
@@ -182,8 +238,10 @@ menu_mapping = {
 }
 menu_options = list(menu_mapping.keys())
 
-try: current_idx = list(menu_mapping.values()).index(st.session_state.active_menu)
-except: current_idx = 0
+try:
+    current_idx = list(menu_mapping.values()).index(st.session_state.active_menu)
+except:
+    current_idx = 0
 
 # --- القائمة الجانبية (Sidebar) ---
 with st.sidebar:
@@ -213,8 +271,10 @@ with st.sidebar:
                 if len(new_p.strip()) > 0:
                     db_update_branch_password(st.session_state.current_branch, new_p.strip())
                     st.success("Password updated successfully!")
-                else: st.error("Password cannot be empty!")
-            else: st.error("Incorrect Old Password!")
+                else:
+                    st.error("Password cannot be empty!")
+            else:
+                st.error("Incorrect Old Password!")
             
         if is_super_user:
             st.markdown("---")
@@ -226,19 +286,50 @@ with st.sidebar:
                     db_add_new_branch(new_b_name.strip(), new_b_pass.strip())
                     st.success(f"Branch '{new_b_name}' added successfully!")
                     st.rerun()
-                else: st.error("Please fill in branch name and password!")
+                else:
+                    st.error("Please fill in branch name and password!")
 
     st.markdown("---")
     if st.button(tr("Logout"), type="primary", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.current_branch = None
         st.session_state.is_super_admin = False
+        st.session_state.current_edit_index = None
+        st.session_state.selected_row_idx = 0
         st.rerun()
 
-# --- نافذة تفاصيل الباج الإضافية وإرفاق الصور أو فتح الكاميرا حياً ---
+# ==========================================
+# --- نافذة تأكيد الحذف ---
+# ==========================================
+@st.dialog(tr("Confirm Delete"))
+def confirm_delete_dialog(bag_index, bag_number, customer_name):
+    st.warning(f"{tr('Are you sure you want to delete this bag?')}\n\n**{tr('Bag Number')}:** {bag_number}\n**{tr('Customer Name')}:** {customer_name}")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button(tr("Yes, Delete"), type="primary", use_container_width=True):
+            add_to_log(bag_number, customer_name, "Record Deleted", st.session_state.current_branch)
+            bags_data.pop(bag_index)
+            save_data(bags_data)
+            st.session_state.selected_row_idx = 0
+            st.session_state.confirm_delete = False
+            st.session_state.delete_target_index = None
+            st.success("Deleted successfully!")
+            st.rerun()
+    with col2:
+        if st.button(tr("Cancel"), use_container_width=True):
+            st.session_state.confirm_delete = False
+            st.session_state.delete_target_index = None
+            st.rerun()
+
+# ==========================================
+# --- نافذة تفاصيل الباج (مع إصلاح رفع الصور) ---
+# ==========================================
 @st.dialog("Bag Extra Details & Management")
 def show_bag_details_dialog(index_in_json):
     bags_fresh = load_data()
+    if index_in_json >= len(bags_fresh):
+        st.error("Bag not found!")
+        return
     b = bags_fresh[index_in_json]
     st.write(f"### 💎 {tr('Bag Number')}: {b['bag_number']}")
     st.write(f"**{tr('Customer Name')}:** {b['customer_name']}")
@@ -255,8 +346,6 @@ def show_bag_details_dialog(index_in_json):
         uploaded_file = st.file_uploader(tr("Receipt Image"), type=["jpg", "jpeg", "png"])
     else:
         camera_file = st.camera_input("Capture / تصوير الإيصال")
-        
-    final_img_data = uploaded_file if uploaded_file is not None else camera_file
     
     img_path = b.get("image_path", "")
     if img_path and os.path.exists(img_path):
@@ -268,12 +357,20 @@ def show_bag_details_dialog(index_in_json):
             
     if st.button(tr("Add") + " / " + tr("Update"), type="primary"):
         b["customer_id"] = cust_id.strip()
-        if final_img_data is not None:
-            file_ext = ".png" if camera_file else os.path.splitext(final_img_data.name)[1]
+        
+        # إصلاح حفظ الصور من الكاميرا
+        if camera_file is not None:
+            saved_img_name = f"bag_{b['bag_number']}.png"
+            full_save_path = os.path.join(IMAGE_DIR, saved_img_name)
+            with open(full_save_path, "wb") as f:
+                f.write(camera_file.getbuffer())
+            b["image_path"] = full_save_path
+        elif uploaded_file is not None:
+            file_ext = os.path.splitext(uploaded_file.name)[1]
             saved_img_name = f"bag_{b['bag_number']}{file_ext}"
             full_save_path = os.path.join(IMAGE_DIR, saved_img_name)
             with open(full_save_path, "wb") as f:
-                f.write(final_img_data.getbuffer())
+                f.write(uploaded_file.getbuffer())
             b["image_path"] = full_save_path
             
         bags_fresh[index_in_json] = b
@@ -282,11 +379,13 @@ def show_bag_details_dialog(index_in_json):
         st.success("Saved successfully!")
         st.rerun()
 
+# ==========================================
 # --- القسم الأول: إضافة وتعديل باج (Add Bag) ---
+# ==========================================
 if choice == "Add Bag":
     st.header(tr("Add Bag") if st.session_state.current_edit_index is None else tr("Update"))
     edit_idx = st.session_state.current_edit_index
-    default_rec = bags_data[edit_idx] if edit_idx is not None else {}
+    default_rec = bags_data[edit_idx] if edit_idx is not None and edit_idx < len(bags_data) else {}
     
     with st.form("bag_form", clear_on_submit=False):
         c1, c2 = st.columns(2)
@@ -296,14 +395,14 @@ if choice == "Add Bag":
             cost = st.text_input(tr("Cost"), value=str(default_rec.get("cost", "0")))
         with c2:
             is_urgent = st.checkbox(tr("Urgent"), value=bool(default_rec.get("is_urgent", False)))
-            try: def_date = datetime.strptime(default_rec.get("status_date", ""), "%Y-%m-%d").date()
-            except: def_date = datetime.today().date()
-            status_date = st.date_input(tr("Date"), value=def_date)
+            status_date = st.date_input(tr("Date"), value=parse_date(default_rec.get("status_date", "")))
             
             mob_col1, mob_col2 = st.columns([1, 2])
             with mob_col1:
-                try: def_code_idx = COUNTRY_CODES.index(default_rec.get("country_code", "+971"))
-                except: def_code_idx = 0
+                try:
+                    def_code_idx = COUNTRY_CODES.index(default_rec.get("country_code", "+971"))
+                except:
+                    def_code_idx = 0
                 country_code = st.selectbox("Code", COUNTRY_CODES, index=def_code_idx)
             with mob_col2:
                 mob_num = st.text_input(tr("Mobile"), value=default_rec.get("customer_mobile", ""))
@@ -321,21 +420,27 @@ if choice == "Add Bag":
                     st.error("Bag Number already exists!")
                 else:
                     rec = {
-                        "customer_name": cust_name.strip(), "bag_number": bag_no.strip(), "cost": cost.strip() or "0",
-                        "is_urgent": is_urgent, "country_code": country_code, "customer_mobile": mob_num.strip(),
-                        "status": status, "status_date": str(status_date), "notes": notes.strip(),
-                        "customer_id": default_rec.get("customer_id", ""), 
+                        "customer_name": cust_name.strip(),
+                        "bag_number": bag_no.strip(),
+                        "cost": cost.strip() or "0",
+                        "is_urgent": is_urgent,
+                        "country_code": country_code,
+                        "customer_mobile": mob_num.strip(),
+                        "status": status,
+                        "status_date": str(status_date),
+                        "notes": notes.strip(),
+                        "customer_id": default_rec.get("customer_id", ""),
                         "image_path": default_rec.get("image_path", ""),
                         "reminders_count": default_rec.get("reminders_count", 0),
                         "branch_owner": default_rec.get("branch_owner", st.session_state.current_branch)
                     }
                     if edit_idx is None:
                         bags_data.append(rec)
-                        add_to_log(bag_no.strip(), cust_name.strip(), "New Bag Added Local", st.session_state.current_branch)
+                        add_to_log(bag_no.strip(), cust_name.strip(), "New Bag Added", st.session_state.current_branch)
                     else:
                         bags_data[edit_idx] = rec
                         st.session_state.current_edit_index = None
-                        add_to_log(bag_no.strip(), cust_name.strip(), "Record Updated Local", st.session_state.current_branch)
+                        add_to_log(bag_no.strip(), cust_name.strip(), "Record Updated", st.session_state.current_branch)
                     save_data(bags_data)
                     st.success("Saved perfectly!")
                     st.session_state.active_menu = "View / Stats"
@@ -347,15 +452,21 @@ if choice == "Add Bag":
             st.session_state.active_menu = "View / Stats"
             st.rerun()
 
-# --- القسم الثاني: عرض البيانات والبحث الذكي والاختيار من الجدول المدمج (كما كان في الأول) ---
+# ==========================================
+# --- القسم الثاني: عرض البيانات والبحث ---
+# ==========================================
 elif choice == "View / Stats":
     st.header(tr("View / Stats"))
     
     f1, f2, f3, f4 = st.columns(4)
-    with f1: q_name = st.text_input(tr("Search By Name")).lower()
-    with f2: q_bag = st.text_input(tr("Search By Bag")).lower()
-    with f3: q_mob = st.text_input(tr("Search By Mobile")).lower()
-    with f4: filter_status = st.selectbox(tr("Filter Status:"), [tr("All"), "Received", "Out for Repair", "Received Back", "Delivered", tr("Urgent")])
+    with f1:
+        q_name = st.text_input(tr("Search By Name")).lower()
+    with f2:
+        q_bag = st.text_input(tr("Search By Bag")).lower()
+    with f3:
+        q_mob = st.text_input(tr("Search By Mobile")).lower()
+    with f4:
+        filter_status = st.selectbox(tr("Filter Status:"), [tr("All"), "Received", "Out for Repair", "Received Back", "Delivered", tr("Urgent")])
 
     filtered_data = []
     today = datetime.today()
@@ -377,138 +488,151 @@ elif choice == "View / Stats":
             try:
                 b_date = datetime.strptime(b["status_date"], "%Y-%m-%d")
                 days = (today - b_date).days
-            except: days = 0
+            except:
+                days = 0
             is_del = b.get("status") == "Delivered"
             
             tag = "⬜ Normal"
             if not is_del:
-                if (b.get("is_urgent", False) and days >= 7) or (not b.get("is_urgent", False) and days >= 15): tag = "🚨 DELAYED"
-                elif b.get("is_urgent", False): tag = "⚡ URGENT ACTIVE"
-            elif b.get("is_urgent", False) and is_del: tag = "✅ URGENT DELIVERED"
+                if (b.get("is_urgent", False) and days >= 7) or (not b.get("is_urgent", False) and days >= 15):
+                    tag = "🚨 DELAYED"
+                elif b.get("is_urgent", False):
+                    tag = "⚡ URGENT ACTIVE"
+            elif b.get("is_urgent", False) and is_del:
+                tag = "✅ URGENT DELIVERED"
                 
-            count = int(b.get("reminders_count", 0))
+            count = safe_int_convert(b.get("reminders_count", 0))
             check_marks = "✅" * count + "⬜" * max(0, (5 - count))
             
             filtered_data.append({
-                "Index": i, "Type": tag, tr("Customer Name"): b.get("customer_name",""), tr("Bag Number"): b.get("bag_number",""),
-                tr("Mobile"): full_mob, tr("Cost"): f"{b.get('cost', '0')} AED", tr("Status"): b.get("status",""),
-                tr("Date"): b.get("status_date",""), tr("Reminders"): check_marks
+                "Index": i,
+                "Type": tag,
+                tr("Customer Name"): b.get("customer_name", ""),
+                tr("Bag Number"): b.get("bag_number", ""),
+                tr("Mobile"): full_mob,
+                tr("Cost"): f"{safe_float_convert(b.get('cost', 0)):.2f} AED",
+                tr("Status"): b.get("status", ""),
+                tr("Date"): b.get("status_date", ""),
+                tr("Reminders"): check_marks
             })
 
     if filtered_data:
         st.info("💡 Click anywhere on any row below to select it.")
         
-        # 🌟 رجعنا نظام التحديد القديم من السطر بالملي مع تفعيل الـ on_select الرسمي 🌟
-        selection = st.dataframe(
-            filtered_data, 
-            use_container_width=True, 
-            hide_index=True, 
-            selection_mode="single-row",
-            on_select="rerun"
+        # عرض الجدول مع تحديد الصف
+        selected_rows = st.dataframe(
+            filtered_data,
+            use_container_width=True,
+            hide_index=True,
+            selection_mode="single-row"
         )
         
-        # قراءة السطر المختار بأمان تام
-        if selection and "selection" in selection and selection["selection"].get("rows"):
-            st.session_state.selected_row_idx = selection["selection"]["rows"][0]
-            
+        # قراءة الصف المحدد
+        if selected_rows and "rows" in selected_rows and selected_rows["rows"]:
+            st.session_state.selected_row_idx = selected_rows["rows"][0]
+        
+        # التأكد من صحة المؤشر
         if st.session_state.selected_row_idx >= len(filtered_data):
             st.session_state.selected_row_idx = 0
             
-        # استخراج الداتا الحقيقية للسطر المختار حياً
-        actual_bag_index = filtered_data[st.session_state.selected_row_idx]["Index"]
-        b_selected = bags_data[actual_bag_index]
-        num = f"{b_selected.get('country_code','').replace('+','')}{b_selected.get('customer_mobile','')}"
-        
-        st.markdown("---")
-        st.markdown(f"### 🎯 Active Selection: **Bag #{b_selected['bag_number']}** ({b_selected['customer_name']})")
-        
-        # 📢 أزرار الواتساب والـ Reminders منورة وشغالة بنظام السطر المختار
-        act_c1, act_c2 = st.columns(2)
-        with act_c1:
-            msg_ready = (
-                f"السلام عليكم من {st.session_state.current_branch}.\n\n"
-                f"يرجى العلم بأن التصليح الخاص بكم رقم (*{b_selected['bag_number']}*) جاهز للإستلام بالفرع.\n"
-                f"التكلفة الإجمالية: *{b_selected.get('cost','0')}* درهم.\n\n"
-                f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
-                f"شكراً لتعاملكم معنا 🌹\n\n"
-                f"---------------------------\n\n"
-                f"Greetings from {st.session_state.current_branch}.\n\n"
-                f"Your repair bag (*{b_selected['bag_number']}*) is ready for collection at the store.\n"
-                f"Total Cost: *{b_selected.get('cost','0')}* AED.\n\n"
-                f"Kindly bring your repair receipt.\n"
-                f"Thank you 🌹"
-            )
-            url_ready = f"https://api.whatsapp.com/send?phone={num}&text={urllib.parse.quote(msg_ready)}"
-            if st.link_button("WhatsApp 📱 Ready Message", url_ready, use_container_width=True, type="primary"):
-                add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Ready Message Sent", st.session_state.current_branch)
+        if filtered_data:
+            # استخراج البيانات الحقيقية للسطر المختار
+            actual_bag_index = filtered_data[st.session_state.selected_row_idx]["Index"]
+            if actual_bag_index < len(bags_data):
+                b_selected = bags_data[actual_bag_index]
                 
-        with act_c2:
-            msg_remind = (
-                f"السلام عليكم من {st.session_state.current_branch}.\n\n"
-                f"نود تذكيركم بأن التصليح رقم (*{b_selected['bag_number']}*) لا يزال متاحاً للإستلام.\n"
-                f"التكلفة الإجمالية: *{b_selected.get('cost','0')}* درهم.\n\n"
-                f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
-                f"شكراً لتعاملكم معنا 🌹\n\n"
-                f"---------------------------\n\n"
-                f"Greetings from {st.session_state.current_branch}.\n\n"
-                f"This is a friendly reminder that your repair bag (*{b_selected['bag_number']}*) is still waiting for collection.\n"
-                f"Total Cost: *{b_selected.get('cost','0')}* AED.\n\n"
-                f"Kindly bring your repair receipt.\n"
-                f"Thank you 🌹"
-            )
-            url_remind = f"https://api.whatsapp.com/send?phone={num}&text={urllib.parse.quote(msg_remind)}"
-            if st.link_button(tr("Send Reminder"), url_remind, use_container_width=True):
-                # التعديل الذكي لكسر حلقة التكرار وتثبيت علامة الصح لمرة واحدة
-                bags_data[actual_bag_index]["reminders_count"] = int(b_selected.get("reminders_count", 0)) + 1
-                save_data(bags_data)
-                add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent Fixed", st.session_state.current_branch)
+                # تنسيق رقم الواتساب بشكل صحيح
+                whatsapp_num = format_whatsapp_number(b_selected.get('country_code', '+971'), b_selected.get('customer_mobile', ''))
                 
-                # تصفير الـ selection لمنع تكرار الحركة أوتوماتيك وثبات الجدول
-                st.session_state.selected_row_idx = 0
-                st.rerun()
-        
-        st.markdown("---")
-        # 🛠️ زراير التحكم الأربعة كاملة (التفاصيل، الكاميرا، التعديل، والمسح) ظاهرة ومثبتة 100% تحت السطر المختار 🛠️
-        btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
-        
-        with btn_manage_col1:
-            if st.button(tr("Manage & Details 📝"), use_container_width=True, type="secondary"):
-                show_bag_details_dialog(actual_bag_index)
+                st.markdown("---")
+                st.markdown(f"### 🎯 Active Selection: **Bag #{b_selected['bag_number']}** ({b_selected['customer_name']})")
                 
-        with btn_manage_col2:
-            password_input = st.text_input("Admin Password", type="password", label_visibility="collapsed", placeholder="Password to Edit/Delete", key="admin_panel_p")
-            
-        with btn_manage_col3:
-            if st.button(tr("Edit"), use_container_width=True):
-                branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
-                if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
-                    st.session_state.current_edit_index = actual_bag_index
-                    st.session_state.active_menu = "Add Bag"
-                    st.rerun()
-                else: st.error("Incorrect Password!")
-                
-        with btn_manage_col4:
-            if st.button(tr("Delete"), use_container_width=True):
-                branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
-                if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
-                    add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Record Deleted Local", st.session_state.current_branch)
-                    bags_data.pop(actual_bag_index)
+                # أزرار الواتساب
+                act_c1, act_c2 = st.columns(2)
+                with act_c1:
+                    msg_ready = (
+                        f"السلام عليكم من {st.session_state.current_branch}.\n\n"
+                        f"يرجى العلم بأن التصليح الخاص بكم رقم (*{b_selected['bag_number']}*) جاهز للإستلام بالفرع.\n"
+                        f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
+                        f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
+                        f"شكراً لتعاملكم معنا 🌹\n\n"
+                        f"---------------------------\n\n"
+                        f"Greetings from {st.session_state.current_branch}.\n\n"
+                        f"Your repair bag (*{b_selected['bag_number']}*) is ready for collection at the store.\n"
+                        f"Total Cost: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* AED.\n\n"
+                        f"Kindly bring your repair receipt.\n"
+                        f"Thank you 🌹"
+                    )
+                    url_ready = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_ready)}"
+                    st.markdown(f'<a href="{url_ready}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; padding:0.5rem; border:none; border-radius:0.5rem; cursor:pointer;">📱 {tr("WhatsApp Ready Message")}</button></a>', unsafe_allow_html=True)
+                    
+                with act_c2:
+                    msg_remind = (
+                        f"السلام عليكم من {st.session_state.current_branch}.\n\n"
+                        f"نود تذكيركم بأن التصليح رقم (*{b_selected['bag_number']}*) لا يزال متاحاً للإستلام.\n"
+                        f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
+                        f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
+                        f"شكراً لتعاملكم معنا 🌹\n\n"
+                        f"---------------------------\n\n"
+                        f"Greetings from {st.session_state.current_branch}.\n\n"
+                        f"This is a friendly reminder that your repair bag (*{b_selected['bag_number']}*) is still waiting for collection.\n"
+                        f"Total Cost: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* AED.\n\n"
+                        f"Kindly bring your repair receipt.\n"
+                        f"Thank you 🌹"
+                    )
+                    url_remind = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_remind)}"
+                    st.markdown(f'<a href="{url_remind}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; padding:0.5rem; border:none; border-radius:0.5rem; cursor:pointer;">🔔 {tr("Send Reminder")}</button></a>', unsafe_allow_html=True)
+                    
+                    # زيادة عداد التذكيرات
+                    bags_data[actual_bag_index]["reminders_count"] = safe_int_convert(b_selected.get("reminders_count", 0)) + 1
                     save_data(bags_data)
-                    st.session_state.selected_row_idx = 0
-                    st.success("Deleted successfully!")
-                    st.rerun()
-                else: st.error("Incorrect Password!")
+                    add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent", st.session_state.current_branch)
+                
+                st.markdown("---")
+                
+                # أزرار التحكم (تفاصيل - تعديل - حذف)
+                btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
+                
+                with btn_manage_col1:
+                    if st.button(tr("Manage & Details 📝"), use_container_width=True, type="secondary"):
+                        show_bag_details_dialog(actual_bag_index)
+                        
+                with btn_manage_col2:
+                    password_input = st.text_input("Admin Password", type="password", label_visibility="collapsed", placeholder="Password to Edit/Delete", key="admin_panel_p")
+                    
+                with btn_manage_col3:
+                    if st.button(tr("Edit"), use_container_width=True):
+                        branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
+                        if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
+                            st.session_state.current_edit_index = actual_bag_index
+                            st.session_state.active_menu = "Add Bag"
+                            st.rerun()
+                        else:
+                            st.error("Incorrect Password!")
+                            
+                with btn_manage_col4:
+                    if st.button(tr("Delete"), use_container_width=True):
+                        branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
+                        if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
+                            confirm_delete_dialog(actual_bag_index, b_selected['bag_number'], b_selected['customer_name'])
+                        else:
+                            st.error("Incorrect Password!")
+            else:
+                st.warning("Selected bag not found in database")
     else:
         st.info("No matching data found.")
 
-# --- القسم الثالث: التنبيهات 📢 (Alerts) ---
+# ==========================================
+# --- القسم الثالث: التنبيهات (Alerts) ---
+# ==========================================
 elif choice == "Alerts":
     st.header(tr("Alerts"))
     today = datetime.today()
     urgent_alerts, normal_alerts = [], []
     
     for b in bags_data:
-        if b.get("branch_owner", "Yas Mall") != st.session_state.current_branch and not is_super_user: continue
+        if b.get("branch_owner", "Yas Mall") != st.session_state.current_branch and not is_super_user:
+            continue
         if b.get("status") != "Delivered":
             try:
                 d = datetime.strptime(b["status_date"], "%Y-%m-%d")
@@ -517,39 +641,57 @@ elif choice == "Alerts":
                     urgent_alerts.append({tr("Bag Number"): b["bag_number"], tr("Customer Name"): b["customer_name"], tr("Days Overdue"): days})
                 elif not b.get("is_urgent", False) and days >= 15:
                     normal_alerts.append({tr("Bag Number"): b["bag_number"], tr("Customer Name"): b["customer_name"], tr("Days Overdue"): days})
-            except: continue
+            except:
+                continue
                 
     col_al1, col_al2 = st.columns(2)
     with col_al1:
         st.subheader(tr("Urgent Bags Overdue (7+ Days)"))
-        if urgent_alerts: st.dataframe(urgent_alerts, use_container_width=True, hide_index=True)
-        else: st.success("No critical urgent alerts.")
+        if urgent_alerts:
+            st.dataframe(urgent_alerts, use_container_width=True, hide_index=True)
+        else:
+            st.success("No critical urgent alerts.")
     with col_al2:
         st.subheader(tr("Normal Bags Overdue (15+ Days)"))
-        if normal_alerts: st.dataframe(normal_alerts, use_container_width=True, hide_index=True)
-        else: st.success("No normal alerts.")
+        if normal_alerts:
+            st.dataframe(normal_alerts, use_container_width=True, hide_index=True)
+        else:
+            st.success("No normal alerts.")
 
+# ==========================================
 # --- القسم الرابع: الإحصائيات وسجلات النظام (Stats) ---
+# ==========================================
 elif choice == "Stats":
     st.header(tr("Stats"))
     
     visible_bags = [b for b in bags_data if b.get("branch_owner", "Yas Mall") == st.session_state.current_branch or is_super_user]
-    income = sum(float(str(b.get("cost", 0)).replace(',', '')) for b in visible_bags if b.get("status") == "Delivered" and str(b.get("cost", 0)).replace('.', '', 1).isdigit())
+    
+    # حساب الدخل بشكل آمن
+    income = sum(safe_float_convert(b.get("cost", 0)) for b in visible_bags if b.get("status") == "Delivered")
     
     counts = {
-        "Total Bags": len(visible_bags), "Received": sum(1 for b in visible_bags if b["status"] == "Received"),
-        "Out Repair": sum(1 for b in visible_bags if b["status"] == "Out for Repair"), "In Store": sum(1 for b in visible_bags if b["status"] == "Received Back"),
-        "Delivered": sum(1 for b in visible_bags if b["status"] == "Delivered"), "Income": f"{income} AED"
+        "Total Bags": len(visible_bags),
+        "Received": sum(1 for b in visible_bags if b["status"] == "Received"),
+        "Out Repair": sum(1 for b in visible_bags if b["status"] == "Out for Repair"),
+        "In Store": sum(1 for b in visible_bags if b["status"] == "Received Back"),
+        "Delivered": sum(1 for b in visible_bags if b["status"] == "Delivered"),
+        "Income": f"{income:.2f} AED"
     }
     
     m1, m2, m3 = st.columns(3)
-    with m1: st.metric(tr("Total Bags"), counts["Total Bags"])
-    with m2: st.metric(tr("Received"), counts["Received"])
-    with m3: st.metric(tr("Out Repair"), counts["Out Repair"])
+    with m1:
+        st.metric(tr("Total Bags"), counts["Total Bags"])
+    with m2:
+        st.metric(tr("Received"), counts["Received"])
+    with m3:
+        st.metric(tr("Out Repair"), counts["Out Repair"])
     m4, m5, m6 = st.columns(3)
-    with m4: st.metric(tr("In Store"), counts["In Store"])
-    with m5: st.metric(tr("Delivered"), counts["Delivered"])
-    with m6: st.metric(tr("Income"), counts["Income"])
+    with m4:
+        st.metric(tr("In Store"), counts["In Store"])
+    with m5:
+        st.metric(tr("Delivered"), counts["Delivered"])
+    with m6:
+        st.metric(tr("Income"), counts["Income"])
     
     st.markdown("---")
     st.subheader(tr("Monthly Performance"))
@@ -557,22 +699,26 @@ elif choice == "Stats":
     for b in visible_bags:
         try:
             m = datetime.strptime(b["status_date"], "%Y-%m-%d").strftime("%Y-%m (%B)")
-            if m not in m_stats: m_stats[m] = {"count": 0, "income": 0}
+            if m not in m_stats:
+                m_stats[m] = {"count": 0, "income": 0}
             m_stats[m]["count"] += 1
-            if b["status"] == "Delivered" and str(b.get("cost", 0)).replace('.', '', 1).isdigit(): 
-                m_stats[m]["income"] += float(str(b.get("cost", 0)).replace(',', ''))
-        except: continue
+            if b["status"] == "Delivered":
+                m_stats[m]["income"] += safe_float_convert(b.get("cost", 0))
+        except:
+            continue
             
     if m_stats:
-        monthly_table = [{"Month": m, "Bags Count": m_stats[m]['count'], "Income": f"{m_stats[m]['income']} AED"} for m in sorted(m_stats.keys(), reverse=True)]
+        monthly_table = [{"Month": m, "Bags Count": m_stats[m]['count'], "Income": f"{m_stats[m]['income']:.2f} AED"} for m in sorted(m_stats.keys(), reverse=True)]
         st.table(monthly_table)
         
     st.markdown("---")
     with st.expander(tr("View Action Logs 📜")):
         filtered_logs = [l for l in actions_log if l.get("branch") == st.session_state.current_branch or is_super_user]
         log_display = [{tr("Time"): e.get('time'), tr("Branch"): e.get('branch', 'Yas Mall'), tr("Bag #"): e.get('bag'), tr("Customer"): e.get('customer'), tr("Action"): e.get('action')} for e in reversed(filtered_logs)]
-        if log_display: st.dataframe(log_display, use_container_width=True, hide_index=True)
-        else: st.info("No logs found.")
+        if log_display:
+            st.dataframe(log_display, use_container_width=True, hide_index=True)
+        else:
+            st.info("No logs found.")
 
     st.markdown("---")
     with st.expander(f"🔐 {tr('Login History')} & {tr('Super Backup')} (Super Admin Only)"):
@@ -589,10 +735,13 @@ elif choice == "Stats":
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         type="primary"
                     )
-            else: st.info("No data available to backup yet.")
+            else:
+                st.info("No data available to backup yet.")
             try:
                 st.subheader(tr("Login History"))
                 history_display = [{tr("Time"): h["time"], tr("Branch"): h["branch"], "Access Type": h["type"]} for h in reversed(db_load_login_history())]
                 st.dataframe(history_display, use_container_width=True, hide_index=True)
-            except: st.info("No history available.")
-        else: st.warning("Access Denied. Only Super Admin can view core metrics and download backups.")
+            except:
+                st.info("No history available.")
+        else:
+            st.warning("Access Denied. Only Super Admin can view core metrics and download backups.")
