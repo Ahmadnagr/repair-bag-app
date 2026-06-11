@@ -119,7 +119,7 @@ def db_add_login_history(branch_name, login_type):
 # --- إدارة حالة التطبيق الجارية (Session State) ---
 if "language" not in st.session_state: st.session_state.language = "en"
 if "current_edit_index" not in st.session_state: st.session_state.current_edit_index = None
-if "selected_row_idx" not in st.session_state: st.session_state.selected_row_idx = 0
+if "selected_bag_idx" not in st.session_state: st.session_state.selected_bag_idx = 0
 if "active_menu" not in st.session_state: st.session_state.active_menu = "Add Bag"
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "current_branch" not in st.session_state: st.session_state.current_branch = None
@@ -438,21 +438,24 @@ elif choice == "View / Stats":
 
     if filtered_data:
         st.info("💡 Click anywhere on any row below to select it.")
-        selection = st.dataframe(filtered_data, use_container_width=True, hide_index=True, selection_mode="single-row", on_select="rerun")
         
-        # التأكد من ثبات السطر المختار بدون حجب الزراير
+        # 🌟 تم إلغاء on_select="rerun" من الـ dataframe لمنع التهنيج ولوب الـ Reminder اللانهائي 🌟
+        selection = st.dataframe(filtered_data, use_container_width=True, hide_index=True, selection_mode="single-row")
+        
+        # التقاط السطر المختار يدوياً وبثبات كامل
         if selection and selection.get("selection", {}).get("rows"):
-            st.session_state.selected_row_idx = selection["selection"]["rows"][0]
+            selected_row_index_in_filtered = selection["selection"]["rows"][0]
+            actual_bag_index = filtered_data[selected_row_index_in_filtered]["Index"]
+            st.session_state.selected_bag_idx = actual_bag_index
             
-        if st.session_state.selected_row_idx is not None and st.session_state.selected_row_idx < len(filtered_data):
-            actual_bag_index = filtered_data[st.session_state.selected_row_idx]["Index"]
-            b_selected = bags_data[actual_bag_index]
+        # ضمان ظهور اللوحة والزراير بناءً على الـ index المثبت والمستقر في الجلسة الجارية
+        if st.session_state.selected_bag_idx is not None and st.session_state.selected_bag_idx < len(bags_data):
+            b_selected = bags_data[st.session_state.selected_bag_idx]
             num = f"{b_selected.get('country_code','').replace('+','')}{b_selected.get('customer_mobile','')}"
             
             st.markdown("---")
             st.markdown(f"### 🎯 Active Selection: **Bag #{b_selected['bag_number']}** ({b_selected['customer_name']})")
             
-            # 📢 لوحة زراير إرسال رسائل الواتساب والتحكم الكاملة المضمونة تظهر هنا حالا!
             act_c1, act_c2 = st.columns(2)
             with act_c1:
                 msg_ready = (
@@ -488,20 +491,20 @@ elif choice == "View / Stats":
                 )
                 url_remind = f"https://api.whatsapp.com/send?phone={num}&text={urllib.parse.quote(msg_remind)}"
                 if st.link_button(tr("Send Reminder"), url_remind, use_container_width=True):
-                    # تحديث العداد بأمان بدون تعليق الريفرش
-                    bags_data[actual_bag_index]["reminders_count"] = int(b_selected.get("reminders_count", 0)) + 1
-                    bags_data[actual_bag_index]["last_notification_date"] = datetime.now().strftime("%Y-%m-%d")
+                    # تحديث العداد مرة واحدة صريحة في الـ JSON بدون الدخول في ريفريش لانهائي
+                    bags_data[st.session_state.selected_bag_idx]["reminders_count"] = int(b_selected.get("reminders_count", 0)) + 1
+                    bags_data[st.session_state.selected_bag_idx]["last_notification_date"] = datetime.now().strftime("%Y-%m-%d")
                     save_json_data(DATA_FILE, bags_data)
-                    db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent Local Stable", st.session_state.current_branch)
+                    db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent Stable Fix", st.session_state.current_branch)
                     st.rerun()
                     
             st.markdown("---")
-            # 🛠️ زراير التعديل والحذف وإدارة الهوية والصور مثبتة هنا لضمان عملها دوماً
+            # 🌟 زراير الإدارة الأربعة ظاهرة ومثبتة ومضمونة 100% 🌟
             btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
             
             with btn_manage_col1:
                 if st.button(tr("Manage & Details 📝"), use_container_width=True, type="secondary"):
-                    show_bag_details_dialog(actual_bag_index)
+                    show_bag_details_dialog(st.session_state.selected_bag_idx)
                     
             with btn_manage_col2:
                 password_input = st.text_input("Admin Password", type="password", label_visibility="collapsed", placeholder="Password to Edit/Delete")
@@ -510,7 +513,7 @@ elif choice == "View / Stats":
                 if st.button(tr("Edit"), use_container_width=True):
                     branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
                     if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
-                        st.session_state.current_edit_index = actual_bag_index
+                        st.session_state.current_edit_index = st.session_state.selected_bag_idx
                         st.session_state.active_menu = "Add Bag"
                         st.rerun()
                     else: st.error("Incorrect Password!")
@@ -520,8 +523,9 @@ elif choice == "View / Stats":
                     branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
                     if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
                         db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Record Deleted", st.session_state.current_branch)
-                        db_delete_bag(actual_bag_index)
+                        db_delete_bag(st.session_state.selected_bag_idx)
                         st.session_state.current_edit_index = None
+                        st.session_state.selected_bag_idx = 0
                         st.success("Deleted from local file database!")
                         st.rerun()
                     else: st.error("Incorrect Password!")
