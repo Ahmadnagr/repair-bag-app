@@ -379,11 +379,10 @@ if choice == "Add Bag":
                     st.session_state.active_menu = "View / Stats"
                     st.rerun()
 
-# --- القسم الثاني: عرض البيانات والبحث الذكي وبانل التحكم الثابتة ---
+# --- القسم الثاني: عرض البيانات والبحث الذكي وبانل التحكم الثابتة المصلحة ---
 elif choice == "View / Stats":
     st.header(tr("View / Stats"))
     
-    # لوحة البحث العامة للجدول
     f1, f2, f3, f4 = st.columns(4)
     with f1: q_name = st.text_input(tr("Search By Name")).lower()
     with f2: q_bag = st.text_input(tr("Search By Bag")).lower()
@@ -394,7 +393,6 @@ elif choice == "View / Stats":
     today = datetime.today()
     
     for i, b in enumerate(bags_data):
-        # تصفية الخصوصية العامة للجدول: المحل يشوف حاجته بس
         if b.get("branch_owner", "Yas Mall") != st.session_state.current_branch and not is_super_user:
             continue
             
@@ -436,7 +434,6 @@ elif choice == "View / Stats":
                 row_entry["Branch"] = b.get("branch_owner", "Yas Mall")
             filtered_data.append(row_entry)
 
-    # عرض جدول البيانات المستقر
     if filtered_data:
         st.dataframe(filtered_data, use_container_width=True, hide_index=True)
     else:
@@ -444,13 +441,12 @@ elif choice == "View / Stats":
 
     st.markdown("---")
     
-    # 🌟 لوحة التحكم الثابتة والمضمونة 100% المفتوحة لكل الباجات التاريخية 🌟
+    # 🌟 لوحة التحكم السريعة الثابتة 🌟
     st.markdown("### 🛠️ Quick Action Control Panel / لوحة التحكم السريعة في الباجات")
     
-    target_bag_input = st.text_input("✍️ Enter Bag Number to execute Action / اكتب رقم الباج للتحكم فيها مباشرة:", placeholder="e.g. 126059")
+    target_bag_input = st.text_input("✍️ Enter Bag Number to execute Action / اكتب رقم الباج للتحكم فيها مباشرة:", placeholder="e.g. 119602")
     
     if target_bag_input.strip():
-        # البحث عن الباج في قاعدة بيانات الـ JSON كاملة بالرقم
         found_idx = next((idx for idx, b in enumerate(bags_data) if str(b.get("bag_number")).strip() == target_bag_input.strip()), None)
         
         if found_idx is not None:
@@ -458,7 +454,7 @@ elif choice == "View / Stats":
             num = f"{b_selected.get('country_code','').replace('+','')}{b_selected.get('customer_mobile','')}"
             st.success(f"🎯 **Found:** Bag #{b_selected['bag_number']} belongs to (*{b_selected['customer_name']}*) | Current Status: {b_selected['status']}")
             
-            # زراير رسايل الواتساب والتذكير المباشر
+            # زراير رسايل الواتساب والتذكير
             act_c1, act_c2 = st.columns(2)
             with act_c1:
                 msg_ready = (
@@ -480,7 +476,7 @@ elif choice == "View / Stats":
             with act_c2:
                 msg_remind = (
                     f"السلام عليكم من {st.session_state.current_branch}.\n\n"
-                    f"نود تذكيركم بأن التصليح رقم (*{b_selected['bag_number']}*) لا يزال متاحاً للاستلام.\n"
+                    f"نود تذكيركم بأن التصليح رقم (*{b_selected['bag_number']}*) لا يزال متاحاً للإستلام.\n"
                     f"التكلفة الإجمالية: *{b_selected.get('cost','0')}* درهم.\n\n"
                     f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
                     f"شكراً لتعاملكم معنا 🌹\n\n"
@@ -500,7 +496,7 @@ elif choice == "View / Stats":
                     st.rerun()
             
             st.markdown("---")
-            # 🛠️ تم إلغاء شرط الخصوصية هنا لتظهر الأربعة زراير كاملة فوراً لجميع الداتا التاريخية 🛠️
+            # 🛠️ تصحيح الربط هنا بإدخال الزراير جوه الـ columns بالمسطرة (مع التفعيل الفوري) 🛠️
             btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
             
             with btn_manage_col1:
