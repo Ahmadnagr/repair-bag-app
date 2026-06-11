@@ -119,7 +119,7 @@ def db_add_login_history(branch_name, login_type):
 # --- إدارة حالة التطبيق الجارية (Session State) ---
 if "language" not in st.session_state: st.session_state.language = "en"
 if "current_edit_index" not in st.session_state: st.session_state.current_edit_index = None
-if "selected_row_idx" not in st.session_state: st.session_state.selected_row_idx = None
+if "selected_row_idx" not in st.session_state: st.session_state.selected_row_idx = 0
 if "active_menu" not in st.session_state: st.session_state.active_menu = "Add Bag"
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "current_branch" not in st.session_state: st.session_state.current_branch = None
@@ -137,7 +137,7 @@ def tr(text):
         "Cost": "التكلفة", "Urgent": "مستعجل ⚡", "Stats": "إحصائيات", "All": "الكل",
         "Edit": "تعديل", "Delete": "حذف", "Search By Name": "بحث بالاسم",
         "Search By Bag": "بحث بالرقم", "Search By Mobile": "بحث بالموبايل",
-        "Alerts": "التنببهات 📢", "Filter Status:": "تصفية الحالة:", "Update": "تحديث البيانات",
+        "Alerts": "التنبيهات 📢", "Filter Status:": "تصفية الحالة:", "Update": "تحديث البيانات",
         "Send Reminder": "إرسال تذكير 🔔", "Reminders": "التذكيرات", "Total Bags": "إجمالي الباجات",
         "Collected": "تم تحصيله", "Received": "استلام", "Out Repair": "خروج تصليح",
         "Back in Store": "وصل المحل", "Delivered": "تم التسليم", "Add Bag": "إضافة باج",
@@ -262,7 +262,7 @@ with st.sidebar:
         st.session_state.is_super_admin = False
         st.rerun()
 
-# --- نافذة التفاصيل والبيانات الإضافية وإرفاق الصور أو فتح الكاميرا ---
+# --- نافذة التفاصيل والبيانات الإضافية وإرفاق الصور أو فتح الكاميرا حياً ---
 @st.dialog("Bag Extra Details & Management")
 def show_bag_details_dialog(index_in_json):
     bags_fresh = db_load_bags()
@@ -440,7 +440,7 @@ elif choice == "View / Stats":
         st.info("💡 Click anywhere on any row below to select it.")
         selection = st.dataframe(filtered_data, use_container_width=True, hide_index=True, selection_mode="single-row", on_select="rerun")
         
-        # التقاط السطر المختار بأمان ومنع اللوب اللانهائي
+        # التأكد من ثبات السطر المختار بدون حجب الزراير
         if selection and selection.get("selection", {}).get("rows"):
             st.session_state.selected_row_idx = selection["selection"]["rows"][0]
             
@@ -449,8 +449,10 @@ elif choice == "View / Stats":
             b_selected = bags_data[actual_bag_index]
             num = f"{b_selected.get('country_code','').replace('+','')}{b_selected.get('customer_mobile','')}"
             
+            st.markdown("---")
             st.markdown(f"### 🎯 Active Selection: **Bag #{b_selected['bag_number']}** ({b_selected['customer_name']})")
             
+            # 📢 لوحة زراير إرسال رسائل الواتساب والتحكم الكاملة المضمونة تظهر هنا حالا!
             act_c1, act_c2 = st.columns(2)
             with act_c1:
                 msg_ready = (
@@ -486,16 +488,15 @@ elif choice == "View / Stats":
                 )
                 url_remind = f"https://api.whatsapp.com/send?phone={num}&text={urllib.parse.quote(msg_remind)}"
                 if st.link_button(tr("Send Reminder"), url_remind, use_container_width=True):
-                    # هنا الحل الجذري: زيادة العداد مرة واحدة وتصفير الـ Selection فوراً لمنع التكرار
+                    # تحديث العداد بأمان بدون تعليق الريفرش
                     bags_data[actual_bag_index]["reminders_count"] = int(b_selected.get("reminders_count", 0)) + 1
                     bags_data[actual_bag_index]["last_notification_date"] = datetime.now().strftime("%Y-%m-%d")
                     save_json_data(DATA_FILE, bags_data)
-                    
                     db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent Local Stable", st.session_state.current_branch)
-                    st.session_state.selected_row_idx = None # تصفير فوري لمنع اللوب
                     st.rerun()
                     
             st.markdown("---")
+            # 🛠️ زراير التعديل والحذف وإدارة الهوية والصور مثبتة هنا لضمان عملها دوماً
             btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
             
             with btn_manage_col1:
@@ -521,7 +522,6 @@ elif choice == "View / Stats":
                         db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Record Deleted", st.session_state.current_branch)
                         db_delete_bag(actual_bag_index)
                         st.session_state.current_edit_index = None
-                        st.session_state.selected_row_idx = None
                         st.success("Deleted from local file database!")
                         st.rerun()
                     else: st.error("Incorrect Password!")
