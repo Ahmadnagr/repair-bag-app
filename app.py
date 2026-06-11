@@ -94,7 +94,6 @@ def db_delete_bag(bag_index):
     bags = db_load_bags()
     if bag_index < len(bags):
         bags.pop(bag_index)
-        # إعادة ترتيب الـ IDs
         for idx, b in enumerate(bags):
             b["id"] = idx + 1
         save_json_data(DATA_FILE, bags)
@@ -275,7 +274,6 @@ def show_bag_details_dialog(index_in_json):
     
     cust_id = st.text_input(tr("Customer ID"), value=b.get("customer_id", ""))
     
-    # 📸 إضافة اوبشن اختيار مصدر الصورة: كاميرا حية أو رفع ملف
     st.write("📸 **Choose Receipt Image Source / اختر مصدر الصورة:**")
     img_source = st.radio("Source", ["Upload File (من الجهاز)", "Take Photo (فتح الكاميرا حياً)"], label_visibility="collapsed")
     
@@ -319,7 +317,7 @@ def show_bag_details_dialog(index_in_json):
             
         db_update_bag(index_in_json, updated_extra)
         db_add_to_log(b['bag_number'], b['customer_name'], "Image/Details Updated via Local DB", st.session_state.current_branch)
-        st.success("Details and image saved to JSON local database!")
+        st.success("Details and image saved to JSON database!")
         st.rerun()
 
 # --- القسم الأول: إضافة باج ---
@@ -388,7 +386,7 @@ if choice == "Add Bag":
             st.session_state.active_menu = "View / Stats"
             st.rerun()
 
-# --- القسم الثاني: عرض البيانات والبحث الذكي ---
+# --- القسم الثاني: عرض البيانات والبحث الذكي والإدارة الكاملة ---
 elif choice == "View / Stats":
     st.header(tr("View / Stats"))
     
@@ -402,7 +400,7 @@ elif choice == "View / Stats":
     today = datetime.today()
     
     for i, b in enumerate(bags_data):
-        # تصفية الخصوصية: الفرع يشوف دنيته بس، الإد أحمد يشوف كلو
+        # تصفية الخصوصية والأمان لكل فرع
         if b.get("branch_owner", "Yas Mall") != st.session_state.current_branch and not is_super_user:
             continue
             
@@ -427,7 +425,7 @@ elif choice == "View / Stats":
                 elif b.get("is_urgent", False): tag = "⚡ URGENT ACTIVE"
             elif b.get("is_urgent", False) and is_del: tag = "✅ URGENT DELIVERED"
                 
-            count = b.get("reminders_count", 0)
+            count = int(b.get("reminders_count", 0))
             check_marks = "✅" * count + "⬜" * max(0, (5 - count))
             
             row_entry = {
@@ -443,6 +441,7 @@ elif choice == "View / Stats":
         st.info("💡 Click anywhere on any row below to select it.")
         selection = st.dataframe(filtered_data, use_container_width=True, hide_index=True, selection_mode="single-row", on_select="rerun")
         
+        # ربط الـ Selection الحالي وحفظ مكانه بالـ Index المحلي المظبوط
         if selection and selection.get("selection", {}).get("rows"):
             st.session_state.selected_row_idx = selection["selection"]["rows"][0]
         if st.session_state.selected_row_idx >= len(filtered_data):
@@ -489,10 +488,12 @@ elif choice == "View / Stats":
             )
             url_remind = f"https://api.whatsapp.com/send?phone={num}&text={urllib.parse.quote(msg_remind)}"
             if st.link_button(tr("Send Reminder"), url_remind, use_container_width=True):
-                b_selected["reminders_count"] = int(b_selected.get("reminders_count", 0)) + 1
-                b_selected["last_notification_date"] = datetime.now().strftime("%Y-%m-%d")
-                db_update_bag(actual_bag_index, b_selected)
-                db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent Local", st.session_state.current_branch)
+                # التعديل هنا: زيادة العداد مباشرة بناءً على الـ actual_bag_index الصريح لمنع اللوب اللانهائي
+                bags_data[actual_bag_index]["reminders_count"] = int(b_selected.get("reminders_count", 0)) + 1
+                bags_data[actual_bag_index]["last_notification_date"] = datetime.now().strftime("%Y-%m-%d")
+                save_json_data(DATA_FILE, bags_data)
+                
+                db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent Local Fix", st.session_state.current_branch)
                 st.rerun()
                 
         st.markdown("---")
@@ -500,7 +501,7 @@ elif choice == "View / Stats":
         
         with btn_manage_col1:
             if st.button(tr("Manage & Details 📝"), use_container_width=True, type="secondary"):
-                show_bag_details_dialog(actual_bag_index) # استدعاء شاشة التفاصيل والكاميرا
+                show_bag_details_dialog(actual_bag_index)
                 
         with btn_manage_col2:
             password_input = st.text_input("Admin Password", type="password", label_visibility="collapsed", placeholder="Password to Edit/Delete")
