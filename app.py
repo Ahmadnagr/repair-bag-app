@@ -519,106 +519,139 @@ elif choice == "View / Stats":
     if filtered_data:
         st.info("💡 Click anywhere on any row below to select it.")
         
-        # عرض الجدول مع تحديد الصف
-        selected_rows = st.dataframe(
-            filtered_data,
+        # ========== الطريقة الآمنة لعرض الجدول والتعامل مع التحديد ==========
+        # استخدام dataframe وعرضه بدون on_select معقد
+        df_display = pd.DataFrame(filtered_data)
+        
+        # حذف عمود Index من العرض (لأنه مش useful للمستخدم)
+        df_for_display = df_display.drop(columns=['Index'])
+        
+        # عرض الجدول باستخدام data_editor بدلاً من dataframe للتحكم الأفضل
+        edited_df = st.data_editor(
+            df_for_display,
             use_container_width=True,
             hide_index=True,
-            selection_mode="single-row"
+            disabled=True,  # منع التعديل المباشر
+            key="bags_data_editor"
         )
         
-        # قراءة الصف المحدد
-        if selected_rows and "rows" in selected_rows and selected_rows["rows"]:
-            st.session_state.selected_row_idx = selected_rows["rows"][0]
+        # طريقة بديلة وآمنة لاختيار الصف: استخدام radio buttons
+        st.markdown("---")
+        st.markdown("### 📌 Select a bag to manage:")
         
-        # التأكد من صحة المؤشر
-        if st.session_state.selected_row_idx >= len(filtered_data):
-            st.session_state.selected_row_idx = 0
+        # عمل قائمة بالباجات المعروضة للاختيار
+        bag_options = []
+        for idx, row in enumerate(filtered_data):
+            bag_options.append(f"{row[tr('Bag Number')]} - {row[tr('Customer Name')]} ({row[tr('Status')]})")
+        
+        # إضافة خيار "لا شيء" في البداية
+        bag_options.insert(0, "-- Select a bag --")
+        
+        selected_option = st.selectbox(
+            "Choose bag / اختر الباج",
+            options=bag_options,
+            index=0,
+            key="bag_selector"
+        )
+        
+        # إذا اختار المستخدم باج حقيقي (ليس "-- Select a bag --")
+        if selected_option != "-- Select a bag --":
+            # إيجاد الـ index الأصلي للباج المختار
+            selected_index_in_filtered = bag_options.index(selected_option) - 1  # -1 عشان الـ "-- Select a bag --"
             
-        if filtered_data:
-            # استخراج البيانات الحقيقية للسطر المختار
-            actual_bag_index = filtered_data[st.session_state.selected_row_idx]["Index"]
-            if actual_bag_index < len(bags_data):
-                b_selected = bags_data[actual_bag_index]
+            if 0 <= selected_index_in_filtered < len(filtered_data):
+                actual_bag_index = filtered_data[selected_index_in_filtered]["Index"]
                 
-                # تنسيق رقم الواتساب بشكل صحيح
-                whatsapp_num = format_whatsapp_number(b_selected.get('country_code', '+971'), b_selected.get('customer_mobile', ''))
-                
-                st.markdown("---")
-                st.markdown(f"### 🎯 Active Selection: **Bag #{b_selected['bag_number']}** ({b_selected['customer_name']})")
-                
-                # أزرار الواتساب
-                act_c1, act_c2 = st.columns(2)
-                with act_c1:
-                    msg_ready = (
-                        f"السلام عليكم من {st.session_state.current_branch}.\n\n"
-                        f"يرجى العلم بأن التصليح الخاص بكم رقم (*{b_selected['bag_number']}*) جاهز للإستلام بالفرع.\n"
-                        f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
-                        f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
-                        f"شكراً لتعاملكم معنا 🌹\n\n"
-                        f"---------------------------\n\n"
-                        f"Greetings from {st.session_state.current_branch}.\n\n"
-                        f"Your repair bag (*{b_selected['bag_number']}*) is ready for collection at the store.\n"
-                        f"Total Cost: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* AED.\n\n"
-                        f"Kindly bring your repair receipt.\n"
-                        f"Thank you 🌹"
-                    )
-                    url_ready = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_ready)}"
-                    st.markdown(f'<a href="{url_ready}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; padding:0.5rem; border:none; border-radius:0.5rem; cursor:pointer;">📱 {tr("WhatsApp Ready Message")}</button></a>', unsafe_allow_html=True)
+                if actual_bag_index < len(bags_data):
+                    b_selected = bags_data[actual_bag_index]
                     
-                with act_c2:
-                    msg_remind = (
-                        f"السلام عليكم من {st.session_state.current_branch}.\n\n"
-                        f"نود تذكيركم بأن التصليح رقم (*{b_selected['bag_number']}*) لا يزال متاحاً للإستلام.\n"
-                        f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
-                        f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
-                        f"شكراً لتعاملكم معنا 🌹\n\n"
-                        f"---------------------------\n\n"
-                        f"Greetings from {st.session_state.current_branch}.\n\n"
-                        f"This is a friendly reminder that your repair bag (*{b_selected['bag_number']}*) is still waiting for collection.\n"
-                        f"Total Cost: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* AED.\n\n"
-                        f"Kindly bring your repair receipt.\n"
-                        f"Thank you 🌹"
-                    )
-                    url_remind = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_remind)}"
-                    st.markdown(f'<a href="{url_remind}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; padding:0.5rem; border:none; border-radius:0.5rem; cursor:pointer;">🔔 {tr("Send Reminder")}</button></a>', unsafe_allow_html=True)
+                    # تنسيق رقم الواتساب بشكل صحيح
+                    whatsapp_num = format_whatsapp_number(b_selected.get('country_code', '+971'), b_selected.get('customer_mobile', ''))
                     
-                    # زيادة عداد التذكيرات
-                    bags_data[actual_bag_index]["reminders_count"] = safe_int_convert(b_selected.get("reminders_count", 0)) + 1
-                    save_data(bags_data)
-                    add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent", st.session_state.current_branch)
-                
-                st.markdown("---")
-                
-                # أزرار التحكم (تفاصيل - تعديل - حذف)
-                btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
-                
-                with btn_manage_col1:
-                    if st.button(tr("Manage & Details 📝"), use_container_width=True, type="secondary"):
-                        show_bag_details_dialog(actual_bag_index)
+                    st.markdown("---")
+                    st.markdown(f"### 🎯 Active Selection: **Bag #{b_selected['bag_number']}** ({b_selected['customer_name']})")
+                    
+                    # عرض معلومات مختصرة عن الباج المختار
+                    col_info1, col_info2, col_info3 = st.columns(3)
+                    with col_info1:
+                        st.metric(tr("Status"), b_selected.get('status', 'Unknown'))
+                    with col_info2:
+                        st.metric(tr("Cost"), f"{safe_float_convert(b_selected.get('cost', 0)):.2f} AED")
+                    with col_info3:
+                        st.metric(tr("Mobile"), f"{b_selected.get('country_code', '')}{b_selected.get('customer_mobile', '')}")
+                    
+                    st.markdown("---")
+                    
+                    # أزرار الواتساب
+                    act_c1, act_c2 = st.columns(2)
+                    with act_c1:
+                        msg_ready = (
+                            f"السلام عليكم من {st.session_state.current_branch}.\n\n"
+                            f"يرجى العلم بأن التصليح الخاص بكم رقم (*{b_selected['bag_number']}*) جاهز للإستلام بالفرع.\n"
+                            f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
+                            f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
+                            f"شكراً لتعاملكم معنا 🌹\n\n"
+                            f"---------------------------\n\n"
+                            f"Greetings from {st.session_state.current_branch}.\n\n"
+                            f"Your repair bag (*{b_selected['bag_number']}*) is ready for collection at the store.\n"
+                            f"Total Cost: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* AED.\n\n"
+                            f"Kindly bring your repair receipt.\n"
+                            f"Thank you 🌹"
+                        )
+                        url_ready = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_ready)}"
+                        st.markdown(f'<a href="{url_ready}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; padding:0.5rem; border:none; border-radius:0.5rem; cursor:pointer;">📱 {tr("WhatsApp Ready Message")}</button></a>', unsafe_allow_html=True)
                         
-                with btn_manage_col2:
-                    password_input = st.text_input("Admin Password", type="password", label_visibility="collapsed", placeholder="Password to Edit/Delete", key="admin_panel_p")
+                    with act_c2:
+                        msg_remind = (
+                            f"السلام عليكم من {st.session_state.current_branch}.\n\n"
+                            f"نود تذكيركم بأن التصليح رقم (*{b_selected['bag_number']}*) لا يزال متاحاً للإستلام.\n"
+                            f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
+                            f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
+                            f"شكراً لتعاملكم معنا 🌹\n\n"
+                            f"---------------------------\n\n"
+                            f"Greetings from {st.session_state.current_branch}.\n\n"
+                            f"This is a friendly reminder that your repair bag (*{b_selected['bag_number']}*) is still waiting for collection.\n"
+                            f"Total Cost: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* AED.\n\n"
+                            f"Kindly bring your repair receipt.\n"
+                            f"Thank you 🌹"
+                        )
+                        url_remind = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_remind)}"
+                        st.markdown(f'<a href="{url_remind}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; padding:0.5rem; border:none; border-radius:0.5rem; cursor:pointer;">🔔 {tr("Send Reminder")}</button></a>', unsafe_allow_html=True)
+                        
+                        # زيادة عداد التذكيرات
+                        bags_data[actual_bag_index]["reminders_count"] = safe_int_convert(b_selected.get("reminders_count", 0)) + 1
+                        save_data(bags_data)
+                        add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent", st.session_state.current_branch)
                     
-                with btn_manage_col3:
-                    if st.button(tr("Edit"), use_container_width=True):
-                        branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
-                        if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
-                            st.session_state.current_edit_index = actual_bag_index
-                            st.session_state.active_menu = "Add Bag"
-                            st.rerun()
-                        else:
-                            st.error("Incorrect Password!")
+                    st.markdown("---")
+                    
+                    # أزرار التحكم (تفاصيل - تعديل - حذف)
+                    btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
+                    
+                    with btn_manage_col1:
+                        if st.button(tr("Manage & Details 📝"), use_container_width=True, type="secondary"):
+                            show_bag_details_dialog(actual_bag_index)
                             
-                with btn_manage_col4:
-                    if st.button(tr("Delete"), use_container_width=True):
-                        branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
-                        if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
-                            confirm_delete_dialog(actual_bag_index, b_selected['bag_number'], b_selected['customer_name'])
-                        else:
-                            st.error("Incorrect Password!")
-            else:
-                st.warning("Selected bag not found in database")
+                    with btn_manage_col2:
+                        password_input = st.text_input("Admin Password", type="password", label_visibility="collapsed", placeholder="Password to Edit/Delete", key="admin_panel_p")
+                        
+                    with btn_manage_col3:
+                        if st.button(tr("Edit"), use_container_width=True):
+                            branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
+                            if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
+                                st.session_state.current_edit_index = actual_bag_index
+                                st.session_state.active_menu = "Add Bag"
+                                st.rerun()
+                            else:
+                                st.error("Incorrect Password!")
+                                
+                    with btn_manage_col4:
+                        if st.button(tr("Delete"), use_container_width=True):
+                            branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
+                            if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
+                                confirm_delete_dialog(actual_bag_index, b_selected['bag_number'], b_selected['customer_name'])
+                            else:
+                                st.error("Incorrect Password!")
     else:
         st.info("No matching data found.")
 
