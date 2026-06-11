@@ -5,7 +5,6 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 from PIL import Image
-from supabase import create_client
 
 # --- إعدادات الصفحة العامة ---
 st.set_page_config(
@@ -15,20 +14,22 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- ربط قاعدة البيانات السحابية (Supabase) ---
-SUPABASE_URL = "https://aarksbtetlwjzicmzoql.supabase.co"
-SUPABASE_KEY = "sb_publishable_GjSxULJ5BszOVvr6XSdnYw_1Cb8HOyH" # المفتاح الجديد النشط والمضمون
-
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-OLD_JSON_FILE = "repair_bags.json"
+# --- إعدادات ملفات الـ JSON المحلية ---
+DATA_FILE = "repair_bags.json"
+BRANCH_FILE = "branch_settings.json"
+LOG_FILE = "actions_log.json"
+LOGIN_HIST_FILE = "login_history.json"
 IMAGE_DIR = "uploaded_images"
+
+for file in [DATA_FILE, BRANCH_FILE, LOG_FILE, LOGIN_HIST_FILE]:
+    if not os.path.exists(file):
+        with open(file, "w", encoding="utf-8") as f:
+            json.dump([] if file != BRANCH_FILE else {}, f, ensure_ascii=False, indent=4)
 
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR, exist_ok=True)
 
 SUPER_ADMIN_PASSWORD = "9999" # باسورد الإدمن العام الخاصة بأحمد
-ADMIN_PASSWORD = "1234"
 COUNTRY_CODES = ["+971", "+20", "+966", "+965", "+974", "+973", "+968", "+1", "+44"]
 STATUS_OPTIONS = ["Received", "Out for Repair", "Received Back", "Delivered"]
 
@@ -43,65 +44,78 @@ HARDCODED_BRANCHES = {
     "Fairuz Dalma Mall": {"password": "0000"}, "Makani Shamkha Mall": {"password": "0000"}, "Madinati Mall": {"password": "0000"}
 }
 
-# --- دالات التعامل مع السيرفر السحابي بدلاً من ملفات الـ JSON القديمة ---
-def db_load_branches():
+# --- دالات إدارة بيانات الـ JSON محلياً ---
+def load_json_data(file_path, default_val=[]):
     try:
-        res = supabase.table("branch_settings").select("*").execute()
-        if res.data and len(res.data) > 0:
-            return {item["branch_name"]: {"password": item["password"]} for item in res.data}
-        return HARDCODED_BRANCHES
+        with open(file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
     except:
+        return default_val
+
+def save_json_data(file_path, data):
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+def db_load_branches():
+    branches = load_json_data(BRANCH_FILE, {})
+    if not branches:
+        save_json_data(BRANCH_FILE, HARDCODED_BRANCHES)
         return HARDCODED_BRANCHES
+    return branches
 
 def db_update_branch_password(branch_name, new_pass):
-    try: supabase.table("branch_settings").update({"password": new_pass}).eq("branch_name", branch_name).execute()
-    except: pass
+    branches = db_load_branches()
+    if branch_name in branches:
+        branches[branch_name]["password"] = new_pass
+        save_json_data(BRANCH_FILE, branches)
 
 def db_add_new_branch(branch_name, password):
-    try: supabase.table("branch_settings").insert({"branch_name": branch_name, "password": password}).execute()
-    except: pass
+    branches = db_load_branches()
+    branches[branch_name] = {"password": password}
+    save_json_data(BRANCH_FILE, branches)
 
 def db_load_bags():
-    try:
-        res = supabase.table("repair_bags").select("*").order("id", desc=False).execute()
-        return res.data
-    except: return []
+    return load_json_data(DATA_FILE, [])
 
 def db_save_bag(bag_data):
-    if "id" in bag_data: del bag_data["id"]
-    supabase.table("repair_bags").insert(bag_data).execute()
+    bags = db_load_bags()
+    bag_data["id"] = len(bags) + 1
+    bags.append(bag_data)
+    save_json_data(DATA_FILE, bags)
 
-def db_update_bag(bag_id, bag_data):
-    if "id" in bag_data: del bag_data["id"]
-    supabase.table("repair_bags").update(bag_data).eq("id", bag_id).execute()
+def db_update_bag(bag_index, bag_data):
+    bags = db_load_bags()
+    if bag_index < len(bags):
+        bag_data["id"] = bags[bag_index].get("id", bag_index + 1)
+        bags[bag_index] = bag_data
+        save_json_data(DATA_FILE, bags)
 
-def db_delete_bag(bag_id):
-    supabase.table("repair_bags").delete().eq("id", bag_id).execute()
+def db_delete_bag(bag_index):
+    bags = db_load_bags()
+    if bag_index < len(bags):
+        bags.pop(bag_index)
+        # إعادة ترتيب الـ IDs
+        for idx, b in enumerate(bags):
+            b["id"] = idx + 1
+        save_json_data(DATA_FILE, bags)
 
 def db_load_logs():
-    try:
-        res = supabase.table("actions_log").select("*").execute()
-        return res.data
-    except: return []
+    return load_json_data(LOG_FILE, [])
 
 def db_add_to_log(bag_number, customer_name, action, branch_name):
-    try:
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = {"time": now, "bag": str(bag_number), "customer": customer_name, "action": action, "branch": branch_name}
-        supabase.table("actions_log").insert(log_entry).execute()
-    except: pass
+    logs = db_load_logs()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logs.append({"time": now, "bag": str(bag_number), "customer": customer_name, "action": action, "branch": branch_name})
+    save_json_data(LOG_FILE, logs)
 
 def db_load_login_history():
-    try:
-        res = supabase.table("login_history").select("*").execute()
-        return res.data
-    except: return []
+    return load_json_data(LOGIN_HIST_FILE, [])
 
 def db_add_login_history(branch_name, login_type):
-    try:
-        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        supabase.table("login_history").insert({"time": now_str, "branch": branch_name, "type": login_type}).execute()
-    except: pass
+    hist = db_load_login_history()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    hist.append({"time": now_str, "branch": branch_name, "type": login_type})
+    save_json_data(LOGIN_HIST_FILE, hist)
 
 # --- إدارة حالة التطبيق الجارية (Session State) ---
 if "language" not in st.session_state: st.session_state.language = "en"
@@ -113,7 +127,7 @@ if "current_branch" not in st.session_state: st.session_state.current_branch = N
 if "last_branch_selection" not in st.session_state: st.session_state.last_branch_selection = "Yas Mall"
 if "is_super_admin" not in st.session_state: st.session_state.is_super_admin = False
 
-# تحميل بيانات الفروع الآمنة
+# تحميل الفروع
 branches_data_cloud = db_load_branches()
 
 # --- قاموس الترجمة الموحد ---
@@ -149,7 +163,7 @@ def tr(text):
 # ==========================================
 if not st.session_state.logged_in:
     st.markdown("<h1 style='text-align: center; color: #1f538d;'>💎 Jawhara Management System</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align: center;'>RepairBag Pro Enterprise Cloud 2026</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center;'>RepairBag Pro Enterprise JSON Local 2026</h3>", unsafe_allow_html=True)
     st.markdown("---")
     
     col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
@@ -170,14 +184,9 @@ if not st.session_state.logged_in:
                 st.session_state.logged_in = True
                 st.session_state.current_branch = selected_branch
                 st.session_state.last_branch_selection = selected_branch
+                st.session_state.is_super_admin = (password_input == SUPER_ADMIN_PASSWORD)
                 
-                if password_input == SUPER_ADMIN_PASSWORD:
-                    st.session_state.is_super_admin = True
-                    login_type = "Super Admin Bypass"
-                else:
-                    st.session_state.is_super_admin = False
-                    login_type = "Standard Branch Login"
-                    
+                login_type = "Super Admin Bypass" if st.session_state.is_super_admin else "Standard Branch Login"
                 db_add_login_history(selected_branch, login_type)
                 
                 st.success(f"Welcome back, {selected_branch}!")
@@ -186,10 +195,9 @@ if not st.session_state.logged_in:
                 st.error("Incorrect Password! Please try again.")
     st.stop()
 
-# جلب البيانات الحية الحالية من السحاب بعد تسجيل الدخول المضمون
+# جلب البيانات الحية الحالية من الـ JSON
 bags_data = db_load_bags()
 actions_log = db_load_logs()
-
 is_super_user = st.session_state.is_super_admin
 
 menu_mapping = {
@@ -206,7 +214,7 @@ except: current_idx = 0
 # --- القائمة الجانبية (Sidebar) ---
 with st.sidebar:
     st.title(st.session_state.current_branch)
-    st.caption("Connected Securely to Cloud ☁️ 🟢")
+    st.caption("Connected to JSON File Database 📂")
     st.markdown("---")
     
     choice_translated = st.radio("Navigation", menu_options, index=current_idx, label_visibility="collapsed")
@@ -255,52 +263,66 @@ with st.sidebar:
         st.session_state.is_super_admin = False
         st.rerun()
 
-# --- نافذة التفاصيل والبيانات الإضافية ---
+# --- نافذة التفاصيل والبيانات الإضافية وإرفاق الصور أو فتح الكاميرا ---
 @st.dialog("Bag Extra Details & Management")
-def show_bag_details_dialog(index, bag_db_id):
+def show_bag_details_dialog(index_in_json):
     bags_fresh = db_load_bags()
-    b = next((item for item in bags_fresh if item["id"] == bag_db_id), bags_fresh[index])
+    b = bags_fresh[index_in_json]
     
     st.write(f"### 💎 {tr('Bag Number')}: {b['bag_number']}")
     st.write(f"**{tr('Customer Name')}:** {b['customer_name']}")
     st.markdown("---")
     
     cust_id = st.text_input(tr("Customer ID"), value=b.get("customer_id", ""))
-    uploaded_file = st.file_uploader(tr("Receipt Image"), type=["jpg", "jpeg", "png"])
+    
+    # 📸 إضافة اوبشن اختيار مصدر الصورة: كاميرا حية أو رفع ملف
+    st.write("📸 **Choose Receipt Image Source / اختر مصدر الصورة:**")
+    img_source = st.radio("Source", ["Upload File (من الجهاز)", "Take Photo (فتح الكاميرا حياً)"], label_visibility="collapsed")
+    
+    uploaded_file = None
+    camera_file = None
+    
+    if img_source == "Upload File (من الجهاز)":
+        uploaded_file = st.file_uploader(tr("Receipt Image"), type=["jpg", "jpeg", "png"])
+    else:
+        camera_file = st.camera_input("Capture / تصوير الإيصال")
+        
+    final_img_data = uploaded_file if uploaded_file is not None else camera_file
     
     img_path = b.get("image_path", "")
     if img_path and os.path.exists(img_path):
         st.write(f"**{tr('Receipt Image')}:**")
         image = Image.open(img_path)
-        st.image(image, width=200, caption="Click upper-right arrow to expand")
-        with st.expander("🔍 View Large Size Directly Here"):
+        st.image(image, width=200, caption="Current Image")
+        with st.expander("🔍 View Large Size"):
             st.image(image, use_container_width=True)
             
     if st.button(tr("Add") + " / " + tr("Update"), type="primary"):
         updated_extra = {
-            "customer_id": cust_id.strip(),
             "customer_name": b["customer_name"], "bag_number": b["bag_number"], "cost": str(b["cost"]),
             "is_urgent": b["is_urgent"], "country_code": b["country_code"], "customer_mobile": b["customer_mobile"],
             "status": b["status"], "status_date": b["status_date"], "notes": b["notes"],
+            "customer_id": cust_id.strip(),
             "price": b.get("price", 0.0), "created_by": b.get("created_by", "System"),
             "created_date": b.get("created_date", ""), "last_notification_date": b.get("last_notification_date", None),
             "reminders_count": b.get("reminders_count", 0),
             "branch_owner": b.get("branch_owner", st.session_state.current_branch), "image_path": b.get("image_path", "")
         }
-        if uploaded_file is not None:
-            file_ext = os.path.splitext(uploaded_file.name)[1]
+        
+        if final_img_data is not None:
+            file_ext = ".png" if camera_file else os.path.splitext(final_img_data.name)[1]
             saved_img_name = f"bag_{b['bag_number']}{file_ext}"
             full_save_path = os.path.join(IMAGE_DIR, saved_img_name)
             with open(full_save_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
+                f.write(final_img_data.getbuffer())
             updated_extra["image_path"] = full_save_path
             
-        db_update_bag(bag_db_id, updated_extra)
-        db_add_to_log(b['bag_number'], b['customer_name'], "Extra details/Image updated", st.session_state.current_branch)
-        st.success("Details updated in cloud successfully!")
+        db_update_bag(index_in_json, updated_extra)
+        db_add_to_log(b['bag_number'], b['customer_name'], "Image/Details Updated via Local DB", st.session_state.current_branch)
+        st.success("Details and image saved to JSON local database!")
         st.rerun()
 
-# --- القسم الأول: إضافة وتعديل باج (Add Bag) ---
+# --- القسم الأول: إضافة باج ---
 if choice == "Add Bag":
     st.header(tr("Add Bag") if st.session_state.current_edit_index is None else tr("Update"))
     edit_idx = st.session_state.current_edit_index
@@ -351,12 +373,12 @@ if choice == "Add Bag":
                     }
                     if edit_idx is None:
                         db_save_bag(rec)
-                        db_add_to_log(bag_no.strip(), cust_name.strip(), "New Bag Added", st.session_state.current_branch)
+                        db_add_to_log(bag_no.strip(), cust_name.strip(), "New Bag Added Local", st.session_state.current_branch)
                     else:
-                        db_update_bag(default_rec["id"], rec)
+                        db_update_bag(edit_idx, rec)
                         st.session_state.current_edit_index = None
-                        db_add_to_log(bag_no.strip(), cust_name.strip(), "Record Updated", st.session_state.current_branch)
-                    st.success("Saved dynamically to Cloud Server!")
+                        db_add_to_log(bag_no.strip(), cust_name.strip(), "Record Updated Local", st.session_state.current_branch)
+                    st.success("Saved perfectly to local JSON database!")
                     st.session_state.active_menu = "View / Stats"
                     st.rerun()
                     
@@ -366,7 +388,7 @@ if choice == "Add Bag":
             st.session_state.active_menu = "View / Stats"
             st.rerun()
 
-# --- القسم الثاني: عرض البيانات والبحث الذكي (View / Stats) ---
+# --- القسم الثاني: عرض البيانات والبحث الذكي ---
 elif choice == "View / Stats":
     st.header(tr("View / Stats"))
     
@@ -380,13 +402,14 @@ elif choice == "View / Stats":
     today = datetime.today()
     
     for i, b in enumerate(bags_data):
+        # تصفية الخصوصية: الفرع يشوف دنيته بس، الإد أحمد يشوف كلو
         if b.get("branch_owner", "Yas Mall") != st.session_state.current_branch and not is_super_user:
             continue
             
-        full_mob = f"{b.get('country_code', '')}{b['customer_mobile']}"
-        bag_no_str = str(b["bag_number"])
+        full_mob = f"{b.get('country_code', '')}{b.get('customer_mobile', '')}"
+        bag_no_str = str(b.get("bag_number", ""))
         
-        match_name = q_name in b["customer_name"].lower() if q_name else True
+        match_name = q_name in b.get("customer_name", "").lower() if q_name else True
         match_bag = q_bag in bag_no_str.lower() if q_bag else True
         match_mob = q_mob in full_mob.lower() if q_mob else True
         match_filter = (filter_status == tr("All")) or (filter_status == tr("Urgent") and b.get("is_urgent", False)) or (b.get("status") == filter_status)
@@ -408,9 +431,9 @@ elif choice == "View / Stats":
             check_marks = "✅" * count + "⬜" * max(0, (5 - count))
             
             row_entry = {
-                "Index": i, "DB_ID": b["id"], "Type": tag, tr("Customer Name"): b["customer_name"], tr("Bag Number"): b["bag_number"],
-                tr("Mobile"): full_mob, tr("Cost"): f"{b.get('cost', '0')} AED", tr("Status"): b["status"],
-                tr("Date"): b["status_date"], tr("Reminders"): check_marks
+                "Index": i, "Type": tag, tr("Customer Name"): b.get("customer_name",""), tr("Bag Number"): b.get("bag_number",""),
+                tr("Mobile"): full_mob, tr("Cost"): f"{b.get('cost', '0')} AED", tr("Status"): b.get("status",""),
+                tr("Date"): b.get("status_date",""), tr("Reminders"): check_marks
             }
             if is_super_user:
                 row_entry["Branch / الفرع"] = b.get("branch_owner", "Yas Mall")
@@ -426,7 +449,6 @@ elif choice == "View / Stats":
             st.session_state.selected_row_idx = 0
             
         actual_bag_index = filtered_data[st.session_state.selected_row_idx]["Index"]
-        bag_db_id = filtered_data[st.session_state.selected_row_idx]["DB_ID"]
         b_selected = bags_data[actual_bag_index]
         num = f"{b_selected.get('country_code','').replace('+','')}{b_selected.get('customer_mobile','')}"
         
@@ -467,13 +489,10 @@ elif choice == "View / Stats":
             )
             url_remind = f"https://api.whatsapp.com/send?phone={num}&text={urllib.parse.quote(msg_remind)}"
             if st.link_button(tr("Send Reminder"), url_remind, use_container_width=True):
-                # زيادة عداد التذكيرات وحفظ تاريخ الإرسال
-                new_count = int(b_selected.get("reminders_count", 0)) + 1
-                supabase.table("repair_bags").update({
-                    "reminders_count": new_count,
-                    "last_notification_date": datetime.now().strftime("%Y-%m-%d")
-                }).eq("id", bag_db_id).execute()
-                db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent", st.session_state.current_branch)
+                b_selected["reminders_count"] = int(b_selected.get("reminders_count", 0)) + 1
+                b_selected["last_notification_date"] = datetime.now().strftime("%Y-%m-%d")
+                db_update_bag(actual_bag_index, b_selected)
+                db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent Local", st.session_state.current_branch)
                 st.rerun()
                 
         st.markdown("---")
@@ -481,10 +500,10 @@ elif choice == "View / Stats":
         
         with btn_manage_col1:
             if st.button(tr("Manage & Details 📝"), use_container_width=True, type="secondary"):
-                show_bag_details_dialog(actual_bag_index, bag_db_id)
+                show_bag_details_dialog(actual_bag_index) # استدعاء شاشة التفاصيل والكاميرا
                 
         with btn_manage_col2:
-            password_input = st.text_input("Admin Password", type="password", label_visibility="collapsed", placeholder="Enter Password to Edit/Delete")
+            password_input = st.text_input("Admin Password", type="password", label_visibility="collapsed", placeholder="Password to Edit/Delete")
             
         with btn_manage_col3:
             if st.button(tr("Edit"), use_container_width=True):
@@ -500,16 +519,16 @@ elif choice == "View / Stats":
                 branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
                 if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
                     db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Record Deleted", st.session_state.current_branch)
-                    db_delete_bag(bag_db_id)
+                    db_delete_bag(actual_bag_index)
                     st.session_state.current_edit_index = None
                     st.session_state.selected_row_idx = 0
-                    st.success("Deleted from cloud database!")
+                    st.success("Deleted from local file database!")
                     st.rerun()
                 else: st.error("Incorrect Password!")
     else:
         st.info("No matching data found.")
 
-# --- القسم الثالث: التنبيهات 📢 (Alerts) ---
+# --- القسم الثالث: التنبيهات 📢 ---
 elif choice == "Alerts":
     st.header(tr("Alerts"))
     today = datetime.today()
@@ -537,7 +556,7 @@ elif choice == "Alerts":
         if normal_alerts: st.dataframe(normal_alerts, use_container_width=True, hide_index=True)
         else: st.success("No normal alerts.")
 
-# --- القسم الرابع: الإحصائيات وسجلات النظام (Stats) ---
+# --- القسم الرابع: الإحصائيات وسجلات النظام ---
 elif choice == "Stats":
     st.header(tr("Stats"))
     
@@ -583,54 +602,8 @@ elif choice == "Stats":
         else: st.info("No logs found.")
 
     st.markdown("---")
-    # شاشة تتبع الدخول وزر الاستيراد والسحب الاحتياطي للـ Super Admin
     with st.expander(f"🔐 {tr('Login History')} & {tr('Super Backup')} (Super Admin Only)"):
         if is_super_user:
-            st.subheader("⚙️ Data Sync & Migration Tools")
-            
-            if os.path.exists(OLD_JSON_FILE):
-                st.write("📢 Select target branch for the JSON backup data:")
-                target_import_branch = st.selectbox("Target Import Branch", list(branches_data_cloud.keys()), key="import_tgt")
-                
-                if st.button("⚙️ Import Data From Old JSON to Cloud", type="secondary"):
-                    try:
-                        with open(OLD_JSON_FILE, "r", encoding="utf-8") as f_old:
-                            old_data = json.load(f_old)
-                        if old_data:
-                            imported_count = 0
-                            for old_bag in old_data:
-                                if not any(str(b["bag_number"]) == str(old_bag["bag_number"]) for b in bags_data):
-                                    # بناء السجل بالمفاتيح الجديدة المطابقة للـ JSON الجديد تماماً
-                                    cloud_bag_record = {
-                                        "customer_name": old_bag.get("customer_name", ""),
-                                        "bag_number": str(old_bag.get("bag_number", "")),
-                                        "customer_mobile": str(old_bag.get("customer_mobile", "")),
-                                        "status": old_bag.get("status", "Received"),
-                                        "status_date": old_bag.get("status_date", ""),
-                                        "notes": old_bag.get("notes", ""),
-                                        "is_urgent": bool(old_bag.get("is_urgent", False)),
-                                        "last_notification_date": old_bag.get("last_notification_date", None),
-                                        "price": float(old_bag.get("price", 0.0)),
-                                        "cost": str(old_bag.get("cost", "0")),
-                                        "created_by": old_bag.get("created_by", "System"),
-                                        "created_date": old_bag.get("created_date", ""),
-                                        "country_code": old_bag.get("country_code", "+971"),
-                                        "reminders_count": int(old_bag.get("reminders_count", 0)),
-                                        "branch_owner": target_import_branch, # قفل الداتا على الفرع المختار
-                                        "image_path": ""
-                                    }
-                                    db_save_bag(cloud_bag_record)
-                                    imported_count += 1
-                            st.success(f"Successfully imported {imported_count} record(s) directly locked to '{target_import_branch}' branch!")
-                            st.rerun()
-                        else:
-                            st.warning("Old JSON file is empty.")
-                    except Exception as e_mig:
-                        st.error(f"Migration error: {str(e_mig)}")
-            else:
-                st.info("No legacy 'repair_bags.json' file detected on the Streamlit server to import.")
-
-            st.markdown("---")
             st.subheader(tr("Super Backup"))
             if bags_data:
                 df_backup = pd.DataFrame(bags_data)
