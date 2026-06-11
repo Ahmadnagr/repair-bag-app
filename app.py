@@ -119,7 +119,7 @@ def db_add_login_history(branch_name, login_type):
 # --- إدارة حالة التطبيق الجارية (Session State) ---
 if "language" not in st.session_state: st.session_state.language = "en"
 if "current_edit_index" not in st.session_state: st.session_state.current_edit_index = None
-if "selected_bag_idx" not in st.session_state: st.session_state.selected_bag_idx = 0
+if "selected_bag_idx" not in st.session_state: st.session_state.selected_bag_idx = None
 if "active_menu" not in st.session_state: st.session_state.active_menu = "Add Bag"
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "current_branch" not in st.session_state: st.session_state.current_branch = None
@@ -260,9 +260,10 @@ with st.sidebar:
         st.session_state.logged_in = False
         st.session_state.current_branch = None
         st.session_state.is_super_admin = False
+        st.session_state.selected_bag_idx = None
         st.rerun()
 
-# --- نافذة التفاصيل والبيانات الإضافية وإرفاق الصور أو فتح الكاميرا حياً ---
+# --- نافذة التفاصيل والبيانات الإضافية والكاميرا حياً ---
 @st.dialog("Bag Extra Details & Management")
 def show_bag_details_dialog(index_in_json):
     bags_fresh = db_load_bags()
@@ -386,7 +387,7 @@ if choice == "Add Bag":
             st.session_state.active_menu = "View / Stats"
             st.rerun()
 
-# --- القسم الثاني: عرض البيانات والبحث الذكي والإدارة الكاملة ---
+# --- القسم الثاني: عرض البيانات والبحث الذكي والإدارة الكاملة والمستقرة ---
 elif choice == "View / Stats":
     st.header(tr("View / Stats"))
     
@@ -439,16 +440,22 @@ elif choice == "View / Stats":
     if filtered_data:
         st.info("💡 Click anywhere on any row below to select it.")
         
-        # 🌟 تم إلغاء on_select="rerun" من الـ dataframe لمنع التهنيج ولوب الـ Reminder اللانهائي 🌟
-        selection = st.dataframe(filtered_data, use_container_width=True, hide_index=True, selection_mode="single-row")
+        # 🔑 تم تصحيح دالة الـ dataframe بوضع اختيار الصف الصريح والآمن لمنع أي كراش 🔑
+        selection = st.dataframe(
+            filtered_data, 
+            use_container_width=True, 
+            hide_index=True, 
+            selection_mode="single-row",
+            on_select="rerun" # رجعناها آمنة للربط المباشر
+        )
         
-        # التقاط السطر المختار يدوياً وبثبات كامل
-        if selection and selection.get("selection", {}).get("rows"):
+        # قراءة الصف المختار بأمر بايثون الصافي والمحمي ضد الـ None والـ Redirection
+        if selection and "selection" in selection and selection["selection"].get("rows"):
             selected_row_index_in_filtered = selection["selection"]["rows"][0]
-            actual_bag_index = filtered_data[selected_row_index_in_filtered]["Index"]
-            st.session_state.selected_bag_idx = actual_bag_index
+            if selected_row_index_in_filtered < len(filtered_data):
+                st.session_state.selected_bag_idx = filtered_data[selected_row_index_in_filtered]["Index"]
             
-        # ضمان ظهور اللوحة والزراير بناءً على الـ index المثبت والمستقر في الجلسة الجارية
+        # لوحة التحكم الكاملة والزراير تظهر فوراً بثبات تام
         if st.session_state.selected_bag_idx is not None and st.session_state.selected_bag_idx < len(bags_data):
             b_selected = bags_data[st.session_state.selected_bag_idx]
             num = f"{b_selected.get('country_code','').replace('+','')}{b_selected.get('customer_mobile','')}"
@@ -456,6 +463,7 @@ elif choice == "View / Stats":
             st.markdown("---")
             st.markdown(f"### 🎯 Active Selection: **Bag #{b_selected['bag_number']}** ({b_selected['customer_name']})")
             
+            # زراير رسائل الواتساب والعدادات الثابتة
             act_c1, act_c2 = st.columns(2)
             with act_c1:
                 msg_ready = (
@@ -491,15 +499,19 @@ elif choice == "View / Stats":
                 )
                 url_remind = f"https://api.whatsapp.com/send?phone={num}&text={urllib.parse.quote(msg_remind)}"
                 if st.link_button(tr("Send Reminder"), url_remind, use_container_width=True):
-                    # تحديث العداد مرة واحدة صريحة في الـ JSON بدون الدخول في ريفريش لانهائي
-                    bags_data[st.session_state.selected_bag_idx]["reminders_count"] = int(b_selected.get("reminders_count", 0)) + 1
-                    bags_data[st.session_state.selected_bag_idx]["last_notification_date"] = datetime.now().strftime("%Y-%m-%d")
+                    # هنا التعديل السحري: بنزود العداد مرة واحدة وبنصفر الـ State فورا لنكسر حلقة التكرار التلقائي!
+                    target_idx = st.session_state.selected_bag_idx
+                    bags_data[target_idx]["reminders_count"] = int(b_selected.get("reminders_count", 0)) + 1
+                    bags_data[target_idx]["last_notification_date"] = datetime.now().strftime("%Y-%m-%d")
                     save_json_data(DATA_FILE, bags_data)
-                    db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent Stable Fix", st.session_state.current_branch)
+                    db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent Local Stable", st.session_state.current_branch)
+                    
+                    st.session_state.selected_bag_idx = None # كسر حلقة التكرار فوراً
+                    st.success("Reminder count updated! Click the row again if you wish to resend.")
                     st.rerun()
                     
             st.markdown("---")
-            # 🌟 زراير الإدارة الأربعة ظاهرة ومثبتة ومضمونة 100% 🌟
+            # 🛠️ رجعتلك لوحة التحكم الأربعة كاملة (التفاصيل الرقمية، الكاميرا، التعديل، والمسح) 🛠️
             btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
             
             with btn_manage_col1:
@@ -525,7 +537,7 @@ elif choice == "View / Stats":
                         db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Record Deleted", st.session_state.current_branch)
                         db_delete_bag(st.session_state.selected_bag_idx)
                         st.session_state.current_edit_index = None
-                        st.session_state.selected_bag_idx = 0
+                        st.session_state.selected_bag_idx = None
                         st.success("Deleted from local file database!")
                         st.rerun()
                     else: st.error("Incorrect Password!")
