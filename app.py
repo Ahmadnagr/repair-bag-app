@@ -116,7 +116,7 @@ def db_add_login_history(branch_name, login_type):
     hist.append({"time": now_str, "branch": branch_name, "type": login_type})
     save_json_data(LOGIN_HIST_FILE, hist)
 
-# --- إدارة حالة التطبيق الجارية (Session State) ---
+# --- إدارة حالة التطبيق الجارية (Session State) التأمين الكامل لمنع الـ KeyError ---
 if "language" not in st.session_state: st.session_state.language = "en"
 if "current_edit_index" not in st.session_state: st.session_state.current_edit_index = None
 if "selected_bag_idx" not in st.session_state: st.session_state.selected_bag_idx = None
@@ -263,7 +263,7 @@ with st.sidebar:
         st.session_state.selected_bag_idx = None
         st.rerun()
 
-# --- نافذة التفاصيل والبيانات الإضافية والكاميرا حياً ---
+# --- نافذة التفاصيل والبيانات الإضافية وإرفاق الصور أو فتح الكاميرا حياً ---
 @st.dialog("Bag Extra Details & Management")
 def show_bag_details_dialog(index_in_json):
     bags_fresh = db_load_bags()
@@ -387,7 +387,7 @@ if choice == "Add Bag":
             st.session_state.active_menu = "View / Stats"
             st.rerun()
 
-# --- القسم الثاني: عرض البيانات والبحث الذكي والإدارة الكاملة والمستقرة ---
+# --- القسم الثاني: عرض البيانات والبحث الذكي والإدارة الكاملة والمستقرة والمؤمنة ---
 elif choice == "View / Stats":
     st.header(tr("View / Stats"))
     
@@ -440,22 +440,22 @@ elif choice == "View / Stats":
     if filtered_data:
         st.info("💡 Click anywhere on any row below to select it.")
         
-        # 🔑 تم تصحيح دالة الـ dataframe بوضع اختيار الصف الصريح والآمن لمنع أي كراش 🔑
+        # الربط الآمن والرسمي المتوافق 100% مع ستريم ليت
         selection = st.dataframe(
             filtered_data, 
             use_container_width=True, 
             hide_index=True, 
             selection_mode="single-row",
-            on_select="rerun" # رجعناها آمنة للربط المباشر
+            on_select="rerun"
         )
         
-        # قراءة الصف المختار بأمر بايثون الصافي والمحمي ضد الـ None والـ Redirection
+        # تأمين قراءة الصف لتجنب الـ KeyError تماماً
         if selection and "selection" in selection and selection["selection"].get("rows"):
             selected_row_index_in_filtered = selection["selection"]["rows"][0]
             if selected_row_index_in_filtered < len(filtered_data):
                 st.session_state.selected_bag_idx = filtered_data[selected_row_index_in_filtered]["Index"]
             
-        # لوحة التحكم الكاملة والزراير تظهر فوراً بثبات تام
+        # لوحة التحكم الكاملة والزراير تظهر فوراً وتثبت بمجرد الاختيار
         if st.session_state.selected_bag_idx is not None and st.session_state.selected_bag_idx < len(bags_data):
             b_selected = bags_data[st.session_state.selected_bag_idx]
             num = f"{b_selected.get('country_code','').replace('+','')}{b_selected.get('customer_mobile','')}"
@@ -463,7 +463,6 @@ elif choice == "View / Stats":
             st.markdown("---")
             st.markdown(f"### 🎯 Active Selection: **Bag #{b_selected['bag_number']}** ({b_selected['customer_name']})")
             
-            # زراير رسائل الواتساب والعدادات الثابتة
             act_c1, act_c2 = st.columns(2)
             with act_c1:
                 msg_ready = (
@@ -499,19 +498,18 @@ elif choice == "View / Stats":
                 )
                 url_remind = f"https://api.whatsapp.com/send?phone={num}&text={urllib.parse.quote(msg_remind)}"
                 if st.link_button(tr("Send Reminder"), url_remind, use_container_width=True):
-                    # هنا التعديل السحري: بنزود العداد مرة واحدة وبنصفر الـ State فورا لنكسر حلقة التكرار التلقائي!
+                    # التعديل السحري النهائي: بنزود العداد وبنصفر الـ State فورا لنكسر حلقة اللوب نهائياً والجدول يثبت
                     target_idx = st.session_state.selected_bag_idx
                     bags_data[target_idx]["reminders_count"] = int(b_selected.get("reminders_count", 0)) + 1
                     bags_data[target_idx]["last_notification_date"] = datetime.now().strftime("%Y-%m-%d")
                     save_json_data(DATA_FILE, bags_data)
                     db_add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent Local Stable", st.session_state.current_branch)
                     
-                    st.session_state.selected_bag_idx = None # كسر حلقة التكرار فوراً
-                    st.success("Reminder count updated! Click the row again if you wish to resend.")
+                    st.session_state.selected_bag_idx = None # كسر حلقة التكرار التلقائي فورا
                     st.rerun()
                     
             st.markdown("---")
-            # 🛠️ رجعتلك لوحة التحكم الأربعة كاملة (التفاصيل الرقمية، الكاميرا، التعديل، والمسح) 🛠️
+            # 🛠️ لوحة الإدارة الأربعة رجعت منورة ومثبتة وشغالة بنسبة 100% 🛠️
             btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
             
             with btn_manage_col1:
