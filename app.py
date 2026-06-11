@@ -586,13 +586,13 @@ elif choice == "View / Stats":
                     act_c1, act_c2 = st.columns(2)
                     with act_c1:
                         msg_ready = (
-                            f"السلام عليكم من {st.session_state.current_branch}.\n\n"
+                            f"Jawhara السلام عليكم من {st.session_state.current_branch}.\n\n"
                             f"يرجى العلم بأن التصليح الخاص بكم رقم (*{b_selected['bag_number']}*) جاهز للإستلام بالفرع.\n"
                             f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
                             f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
                             f"شكراً لتعاملكم معنا 🌹\n\n"
                             f"---------------------------\n\n"
-                            f"Greetings from {st.session_state.current_branch}.\n\n"
+                            f"Greetings from Jawhara {st.session_state.current_branch}.\n\n"
                             f"Your repair bag (*{b_selected['bag_number']}*) is ready for collection at the store.\n"
                             f"Total Cost: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* AED.\n\n"
                             f"Kindly bring your repair receipt.\n"
