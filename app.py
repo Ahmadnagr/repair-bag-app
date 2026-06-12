@@ -48,7 +48,7 @@ st.markdown("""
     [data-testid="stSidebar"] h1, 
     [data-testid="stSidebar"] h2, 
     [data-testid="stSidebar"] h3 {
-        color: #FFD700 !important;
+        color: #FFFFFF!important;
     }
     
     /* النصوص في الشريط الجانبي */
