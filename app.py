@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# --- CSS لتحسين الشكل بالكامل ---
+# --- CSS لتحسين الشكل ووضوح الكتابة ---
 # ==========================================
 st.markdown("""
 <style>
@@ -27,15 +27,21 @@ st.markdown("""
     header {visibility: hidden;}
     footer {visibility: hidden;}
     
+    /* خلفية رئيسية فاتحة للصفحة */
+    .stApp {
+        background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+    }
+    
     /* تنسيق الشريط الجانبي */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
         padding-top: 2rem;
-        border-right: 1px solid rgba(255,255,255,0.1);
     }
     
     [data-testid="stSidebar"] .stMarkdown, 
-    [data-testid="stSidebar"] .stRadio label {
+    [data-testid="stSidebar"] .stRadio label,
+    [data-testid="stSidebar"] .stSelectbox label,
+    [data-testid="stSidebar"] .stTextInput label {
         color: #ffffff !important;
     }
     
@@ -43,6 +49,11 @@ st.markdown("""
     [data-testid="stSidebar"] h2, 
     [data-testid="stSidebar"] h3 {
         color: #FFD700 !important;
+    }
+    
+    /* النصوص في الشريط الجانبي */
+    [data-testid="stSidebar"] .stMarkdown {
+        color: #e0e0e0 !important;
     }
     
     /* تنسيق الأزرار */
@@ -63,7 +74,7 @@ st.markdown("""
         background: linear-gradient(90deg, #2c3e6d, #1f538d);
     }
     
-    /* تنسيق البطاقات */
+    /* تنسيق البطاقات - خلفية بيضاء وكتابة واضحة */
     [data-testid="stMetric"] {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 1rem;
@@ -72,34 +83,45 @@ st.markdown("""
         transition: transform 0.3s;
     }
     
-    [data-testid="stMetric"]:hover {
-        transform: translateY(-5px);
-    }
-    
     [data-testid="stMetric"] label {
-        color: rgba(255,255,255,0.9);
+        color: rgba(255,255,255,0.95) !important;
         font-size: 0.9rem;
+        font-weight: 500;
     }
     
     [data-testid="stMetric"] .stMetricValue {
-        color: white;
+        color: white !important;
         font-size: 2rem;
         font-weight: bold;
     }
     
-    /* تنسيق حقول الإدخال */
+    /* تنسيق حقول الإدخال - خلفية بيضاء وكتابة داكنة */
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea,
     .stSelectbox > div > div {
+        background-color: white !important;
+        color: #1a1a2e !important;
         border-radius: 12px;
-        border: 2px solid #e0e0e0;
+        border: 2px solid #1f538d !important;
         padding: 0.5rem 1rem;
-        transition: all 0.3s;
+        font-size: 1rem;
     }
     
-    .stTextInput > div > div > input:focus {
-        border-color: #1f538d;
-        box-shadow: 0 0 0 2px rgba(31,83,141,0.2);
+    .stTextInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus {
+        border-color: #FFD700 !important;
+        box-shadow: 0 0 0 2px rgba(255,215,0,0.2);
+    }
+    
+    /* تسميات حقول الإدخال */
+    .stTextInput label, 
+    .stTextArea label, 
+    .stSelectbox label,
+    .stDateInput label,
+    .stCheckbox label {
+        color: #1a1a2e !important;
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
     }
     
     /* تنسيق الجداول */
@@ -108,16 +130,19 @@ st.markdown("""
         border-radius: 16px;
         overflow: hidden;
         box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        background-color: white !important;
     }
     
     [data-testid="stDataFrame"] th {
         background: linear-gradient(90deg, #1f538d, #2c3e6d);
-        color: white;
+        color: white !important;
         padding: 12px;
         font-weight: 600;
     }
     
     [data-testid="stDataFrame"] td {
+        background-color: white !important;
+        color: #1a1a2e !important;
         padding: 10px;
         border-bottom: 1px solid #eee;
     }
@@ -127,6 +152,7 @@ st.markdown("""
         border-radius: 12px;
         border-left: 5px solid;
         animation: slideIn 0.5s ease;
+        background-color: white !important;
     }
     
     @keyframes slideIn {
@@ -158,15 +184,57 @@ st.markdown("""
     }
     
     .main-header h1 {
-        color: white;
+        color: white !important;
         font-size: 2rem;
         margin: 0;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
     }
     
     .main-header p {
-        color: rgba(255,255,255,0.9);
+        color: rgba(255,255,255,0.95) !important;
         font-size: 1rem;
+    }
+    
+    /* تنسيق العناوين الرئيسية */
+    h1, h2, h3, h4, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+        color: #1a1a2e !important;
+    }
+    
+    /* تنسيق النصوص العادية */
+    p, span, div, .stMarkdown {
+        color: #1a1a2e !important;
+    }
+    
+    /* تنسيق الـ expander */
+    .streamlit-expanderHeader {
+        background: linear-gradient(90deg, #f8f9fa, #ffffff);
+        border-radius: 12px;
+        font-weight: 600;
+        color: #1f538d !important;
+    }
+    
+    .streamlit-expanderContent {
+        background-color: white !important;
+        border-radius: 12px;
+    }
+    
+    /* تنسيق الراديو */
+    .stRadio > div {
+        gap: 1rem;
+    }
+    
+    .stRadio label {
+        background: #f0f2f6;
+        padding: 0.5rem 1rem;
+        border-radius: 12px;
+        transition: all 0.3s;
+        cursor: pointer;
+        color: #1a1a2e !important;
+    }
+    
+    .stRadio label:hover {
+        background: #1f538d;
+        color: white !important;
     }
     
     /* سكرول بار */
@@ -214,16 +282,37 @@ st.markdown("""
         transform: scale(1.02);
     }
     
-    .fullscreen-img {
-        max-width: 90vw;
-        max-height: 80vh;
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    /* تنسيق رسائل النجاح والخطأ */
+    .stSuccess, .stError, .stInfo, .stWarning {
+        background-color: white !important;
+        border-radius: 12px !important;
     }
     
-    /* أيقونة المتصفح */
-    [data-testid="stAppViewContainer"] {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    /* تنسيق معلومات الجدول */
+    .stInfo {
+        color: #1a1a2e !important;
+    }
+    
+    /* تنسيق الـ selectbox في القائمة المنسدلة */
+    .stSelectbox div[data-baseweb="select"] > div {
+        background-color: white !important;
+        color: #1a1a2e !important;
+    }
+    
+    /* تنسيق خيارات الـ selectbox */
+    div[role="listbox"] div {
+        color: #1a1a2e !important;
+        background-color: white !important;
+    }
+    
+    /* تنسيق الـ checkbox */
+    .stCheckbox label span {
+        color: #1a1a2e !important;
+    }
+    
+    /* تنسيق الـ metric label */
+    div[data-testid="stMetric"] p {
+        color: white !important;
     }
 </style>
 
@@ -472,7 +561,6 @@ def display_image_with_click(img_path):
     """عرض صورة قابلة للضغط لفتحها بحجم كامل"""
     if img_path and os.path.exists(img_path):
         image = Image.open(img_path)
-        # عرض صورة مصغرة للضغط عليها
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.image(image, width=250, caption="📸 اضغط على الصورة لتكبيرها")
@@ -545,7 +633,6 @@ def show_bag_details_dialog(index_in_json):
         if camera_file is not None:
             saved_img_name = f"bag_{b['bag_number']}.png"
             full_save_path = os.path.join(IMAGE_DIR, saved_img_name)
-            # حفظ بجودة عالية
             image = Image.open(camera_file)
             image.save(full_save_path, "PNG", quality=100, optimize=False)
             b["image_path"] = full_save_path
@@ -553,7 +640,6 @@ def show_bag_details_dialog(index_in_json):
             file_ext = os.path.splitext(uploaded_file.name)[1]
             saved_img_name = f"bag_{b['bag_number']}{file_ext}"
             full_save_path = os.path.join(IMAGE_DIR, saved_img_name)
-            # حفظ بجودة عالية
             image = Image.open(uploaded_file)
             if file_ext.lower() in ['.jpg', '.jpeg']:
                 image.save(full_save_path, "JPEG", quality=100, optimize=False)
@@ -575,7 +661,7 @@ if not st.session_state.logged_in:
     
     col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
     with col_l2:
-        st.write("### 🔑 Branch Secure Login")
+        st.markdown("### 🔑 Branch Secure Login")
         branches_list = list(branches_data_cloud.keys())
         try:
             last_idx = branches_list.index(st.session_state.last_branch_selection)
@@ -586,9 +672,9 @@ if not st.session_state.logged_in:
         
         col_rem1, col_rem2 = st.columns(2)
         with col_rem1:
-            remember_me = st.checkbox("تذكرني لمدة 3 أيام", value=True)
+            remember_me = st.checkbox("✅ تذكرني لمدة 3 أيام", value=True)
         
-        if st.button("Login / دخول", type="primary", use_container_width=True):
+        if st.button("🔐 Login / دخول", type="primary", use_container_width=True):
             correct_password = branches_data_cloud.get(selected_branch, {}).get("password", "0000")
             if password_input == correct_password or password_input == SUPER_ADMIN_PASSWORD:
                 st.session_state.logged_in = True
@@ -632,19 +718,19 @@ with st.sidebar:
     st.caption("Connected to Secure Local JSON Database 📂")
     st.markdown("---")
     
-    choice_translated = st.radio("Navigation", menu_options, index=current_idx, label_visibility="collapsed")
+    choice_translated = st.radio("📋 Navigation", menu_options, index=current_idx, label_visibility="collapsed")
     st.session_state.active_menu = menu_mapping[choice_translated]
     choice = st.session_state.active_menu
     
     st.markdown("---")
-    lang_choice = st.selectbox("Language / اللغة", ["English", "العربية"], index=0 if st.session_state.language == "en" else 1)
+    lang_choice = st.selectbox("🌐 Language / اللغة", ["English", "العربية"], index=0 if st.session_state.language == "en" else 1)
     new_lang = "ar" if lang_choice == "العربية" else "en"
     if new_lang != st.session_state.language:
         st.session_state.language = new_lang
         st.rerun()
         
     st.markdown("---")
-    with st.expander(tr("Branch Settings")):
+    with st.expander("⚙️ " + tr("Branch Settings")):
         st.write(f"**{tr('Branch')}:** {st.session_state.current_branch}")
         old_p = st.text_input(tr("Old Password"), type="password")
         new_p = st.text_input(tr("New Password"), type="password")
@@ -661,7 +747,7 @@ with st.sidebar:
             
         if is_super_user:
             st.markdown("---")
-            st.write(tr("Add New Branch"))
+            st.write("🏢 " + tr("Add New Branch"))
             new_b_name = st.text_input(tr("Branch Name"))
             new_b_pass = st.text_input(tr("Branch Password"), type="password")
             if st.button(tr("Add") + " Branch", use_container_width=True):
@@ -673,7 +759,7 @@ with st.sidebar:
                     st.error("Please fill in branch name and password!")
 
     st.markdown("---")
-    if st.button(tr("Logout"), type="primary", use_container_width=True):
+    if st.button("🚪 " + tr("Logout"), type="primary", use_container_width=True):
         clear_login_cookie()
         st.session_state.logged_in = False
         st.session_state.current_branch = None
@@ -894,9 +980,12 @@ elif choice == "View / Stats":
                         url_remind = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_remind)}"
                         st.markdown(f'<a href="{url_remind}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; padding:0.5rem; border:none; border-radius:0.5rem; cursor:pointer;">🔔 إرسال تذكير</button></a>', unsafe_allow_html=True)
                         
-                        bags_data[actual_bag_index]["reminders_count"] = safe_int_convert(b_selected.get("reminders_count", 0)) + 1
+                        # تحديث عداد التذكيرات
+                        current_reminders = safe_int_convert(b_selected.get("reminders_count", 0))
+                        bags_data[actual_bag_index]["reminders_count"] = current_reminders + 1
                         save_data(bags_data)
-                        add_to_log(b_selected['bag_number'], b_selected['customer_name'], "Reminder Sent", st.session_state.current_branch)
+                        add_to_log(b_selected['bag_number'], b_selected['customer_name'], f"Reminder Sent (Total: {current_reminders + 1})", st.session_state.current_branch)
+                        st.info(f"📨 تم إرسال التذكير رقم {current_reminders + 1}")
                     
                     st.markdown("---")
                     
@@ -953,17 +1042,17 @@ elif choice == "Alerts":
                 
     col_al1, col_al2 = st.columns(2)
     with col_al1:
-        st.subheader(tr("Urgent Bags Overdue (7+ Days)"))
+        st.subheader("⚡ " + tr("Urgent Bags Overdue (7+ Days)"))
         if urgent_alerts:
             st.dataframe(urgent_alerts, use_container_width=True, hide_index=True)
         else:
-            st.success("No critical urgent alerts.")
+            st.success("✅ No critical urgent alerts.")
     with col_al2:
-        st.subheader(tr("Normal Bags Overdue (15+ Days)"))
+        st.subheader("📦 " + tr("Normal Bags Overdue (15+ Days)"))
         if normal_alerts:
             st.dataframe(normal_alerts, use_container_width=True, hide_index=True)
         else:
-            st.success("No normal alerts.")
+            st.success("✅ No normal alerts.")
 
 # ==========================================
 # --- القسم الرابع: الإحصائيات ---
@@ -1050,4 +1139,4 @@ elif choice == "Stats":
             except:
                 st.info("No history available.")
         else:
-            st.warning("Access Denied. Only Super Admin can view core metrics and download backups.")
+            st.warning("🔒 Access Denied. Only Super Admin can view core metrics and download backups.")
