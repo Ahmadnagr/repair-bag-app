@@ -6,6 +6,70 @@ import pandas as pd
 import streamlit as st
 from PIL import Image
 import io
+import base64
+
+# ==========================================
+# --- دوال جديدة للتعامل مع الصور Base64 ---
+# ==========================================
+
+def image_to_base64(image_file) -> str:
+    """تحويل صورة إلى نص Base64 لتخزينها في JSON"""
+    if image_file is None:
+        return ""
+    try:
+        # فتح الصورة وتحويلها
+        image = Image.open(image_file)
+        
+        # تحويل الصورة إلى RGB إذا كانت RGBA (للتأكد من التوافق مع JPEG)
+        if image.mode == 'RGBA':
+            image = image.convert('RGB')
+        
+        # حفظ الصورة في ذاكرة مؤقتة
+        buffer = io.BytesIO()
+        
+        # تحديد نوع الملف
+        if hasattr(image_file, 'name') and image_file.name:
+            file_ext = os.path.splitext(image_file.name)[1].lower()
+            if file_ext in ['.jpg', '.jpeg']:
+                image.save(buffer, format='JPEG', quality=85)
+                return base64.b64encode(buffer.getvalue()).decode('utf-8')
+        
+        # الوضع الافتراضي (PNG)
+        image.save(buffer, format='PNG')
+        return base64.b64encode(buffer.getvalue()).decode('utf-8')
+    except Exception as e:
+        print(f"Error converting image to base64: {e}")
+        return ""
+
+def base64_to_image(base64_str: str, save_path: str = None):
+    """تحويل نص Base64 إلى صورة وحفظها"""
+    if not base64_str:
+        return None
+    try:
+        image_data = base64.b64decode(base64_str)
+        image = Image.open(io.BytesIO(image_data))
+        if save_path:
+            image.save(save_path)
+        return image
+    except Exception as e:
+        print(f"Error converting base64 to image: {e}")
+        return None
+
+def get_image_base64_from_bag(bag_data):
+    """استخراج الصورة من بيانات الباج (سواء كانت مسار أو Base64)"""
+    image_data = bag_data.get("image_base64", "")
+    if image_data:
+        return image_data
+    
+    # للتوافق مع النسخ القديمة (لو في صور محفوظة كمسار)
+    old_image_path = bag_data.get("image_path", "")
+    if old_image_path and os.path.exists(old_image_path):
+        try:
+            with open(old_image_path, "rb") as f:
+                return base64.b64encode(f.read()).decode('utf-8')
+        except:
+            pass
+    return ""
 
 # ==========================================
 # --- إعدادات الصفحة العامة ---
@@ -18,39 +82,33 @@ st.set_page_config(
 )
 
 # ==========================================
-# --- CSS لتحسين الشكل ووضوح الكتابة ---
+# --- CSS لتحسين الشكل ---
 # ==========================================
 st.markdown("""
 <style>
-    /* إخفاء العناصر الزائدة */
     #MainMenu {visibility: hidden;}
     header {visibility: hidden;}
     footer {visibility: hidden;}
     
-    /* خلفية رئيسية فاتحة للصفحة */
     .stApp {
         background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
     }
     
-    /* ===== تنسيق الشريط الجانبي ===== */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
         padding-top: 2rem;
     }
     
-    /* كل الكتابة في السايد بار بيضاء */
     [data-testid="stSidebar"] * {
         color: #ffffff !important;
     }
     
-    /* عناوين السايد بار باللون الذهبي */
     [data-testid="stSidebar"] h1, 
     [data-testid="stSidebar"] h2, 
     [data-testid="stSidebar"] h3 {
         color: #FFD700 !important;
     }
     
-    /* المربعات البيضاء في السايد بار تبقى بنفس لون الخلفية */
     [data-testid="stSidebar"] input,
     [data-testid="stSidebar"] textarea,
     [data-testid="stSidebar"] select,
@@ -60,32 +118,11 @@ st.markdown("""
         border-color: #FFD700 !important;
     }
     
-    /* خيارات الـ selectbox في السايد بار */
     [data-testid="stSidebar"] div[role="listbox"] div {
         background-color: #0f0f1a !important;
         color: #ffffff !important;
     }
     
-    /* ===== تنسيق صفحة الدخول ===== */
-    /* جعل كل الكتابة في صفحة الدخول واضحة */
-    .stApp [data-testid="stVerticalBlock"]:has(.main-header) {
-        background: transparent;
-    }
-    
-    /* تسميات selectbox في صفحة الدخول */
-    .stSelectbox label, .stTextInput label, .stCheckbox label {
-        color: #1a1a2e !important;
-        font-weight: 600 !important;
-    }
-    
-    /* حقل selectbox نفسه */
-    .stSelectbox div[data-baseweb="select"] > div {
-        background-color: white !important;
-        color: #1a1a2e !important;
-        border: 2px solid #1f538d !important;
-    }
-    
-    /* ===== تنسيق الأزرار ===== */
     .stButton > button {
         background: linear-gradient(90deg, #1f538d, #2c3e6d);
         color: white;
@@ -103,7 +140,6 @@ st.markdown("""
         background: linear-gradient(90deg, #2c3e6d, #1f538d);
     }
     
-    /* ===== تنسيق البطاقات ===== */
     [data-testid="stMetric"] {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 1rem;
@@ -128,7 +164,27 @@ st.markdown("""
         font-weight: bold;
     }
     
-    /* ===== تنسيق الجدول ===== */
+    .stTextInput > div > div > input,
+    .stTextArea > div > div > textarea,
+    .stSelectbox > div > div {
+        background-color: white !important;
+        color: #1a1a2e !important;
+        border-radius: 12px;
+        border: 2px solid #1f538d !important;
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+    }
+    
+    .stTextInput label, 
+    .stTextArea label, 
+    .stSelectbox label,
+    .stDateInput label,
+    .stCheckbox label {
+        color: #1a1a2e !important;
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+    }
+    
     [data-testid="stDataFrame"] table,
     [data-testid="stTable"] table {
         border-radius: 16px;
@@ -151,7 +207,6 @@ st.markdown("""
         border-bottom: 1px solid #eee;
     }
     
-    /* رأس الصفحة */
     .main-header {
         background: linear-gradient(120deg, #1f538d, #2c3e6d, #1f538d);
         background-size: 200% 200%;
@@ -180,7 +235,6 @@ st.markdown("""
         font-size: 1rem;
     }
     
-    /* سكرول بار */
     ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
@@ -196,7 +250,6 @@ st.markdown("""
         border-radius: 10px;
     }
 </style>
-
 <head>
     <title>Jawhara Repair System</title>
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' fill='%231f538d'>💎</text></svg>">
@@ -204,7 +257,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# --- إدارة الكوكيز (تذكر الدخول لمدة 3 أيام) ---
+# --- إدارة الكوكيز ---
 # ==========================================
 def set_login_cookie(branch_name, is_super_admin=False):
     expiry_date = (datetime.now() + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S")
@@ -238,7 +291,6 @@ LOG_FILE = "actions_log.json"
 CONFIG_FILE = "app_config.json"
 BRANCH_FILE = "branch_settings.json"
 LOGIN_HIST_FILE = "login_history.json"
-IMAGE_DIR = "uploaded_images"
 
 for file in [DATA_FILE, LOG_FILE, CONFIG_FILE, LOGIN_HIST_FILE]:
     if not os.path.exists(file):
@@ -248,9 +300,6 @@ for file in [DATA_FILE, LOG_FILE, CONFIG_FILE, LOGIN_HIST_FILE]:
 if not os.path.exists(BRANCH_FILE):
     with open(BRANCH_FILE, "w", encoding="utf-8") as f:
         json.dump({}, f, ensure_ascii=False, indent=4)
-
-if not os.path.exists(IMAGE_DIR):
-    os.makedirs(IMAGE_DIR, exist_ok=True)
 
 SUPER_ADMIN_PASSWORD = "9999"
 COUNTRY_CODES = ["+971", "+20", "+966", "+965", "+974", "+973", "+968", "+1", "+44"]
@@ -423,25 +472,30 @@ def tr(text):
     return translations.get(text, text) if st.session_state.language == "ar" else text
 
 # ==========================================
-# --- نافذة عرض الصورة بحجم كامل ---
+# --- نافذة عرض الصورة ---
 # ==========================================
 @st.dialog("📸 الصورة بحجم كامل", width="large")
-def show_fullscreen_image(image_path):
-    if os.path.exists(image_path):
-        image = Image.open(image_path)
-        st.image(image, use_container_width=True)
-        st.caption("🔍 يمكنك الضغط على الصورة لتكبيرها أكثر في المتصفح")
+def show_fullscreen_image(image_base64):
+    if image_base64:
+        image = base64_to_image(image_base64)
+        if image:
+            st.image(image, use_container_width=True)
+            st.caption("🔍 يمكنك الضغط على الصورة لتكبيرها أكثر في المتصفح")
+        else:
+            st.error("الصورة غير موجودة")
     else:
-        st.error("الصورة غير موجودة")
+        st.error("لا توجد صورة")
 
-def display_image_with_click(img_path):
-    if img_path and os.path.exists(img_path):
-        image = Image.open(img_path)
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.image(image, width=250, caption="📸 اضغط على الصورة لتكبيرها")
-            if st.button("🔍 فتح الصورة بحجم كامل", key=f"view_full_{img_path}"):
-                show_fullscreen_image(img_path)
+def display_image_from_base64(image_base64, bag_number):
+    """عرض صورة من Base64 مع إمكانية تكبيرها"""
+    if image_base64:
+        image = base64_to_image(image_base64)
+        if image:
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                st.image(image, width=250, caption="📸 اضغط على الصورة لتكبيرها")
+                if st.button("🔍 فتح الصورة بحجم كامل", key=f"view_full_{bag_number}"):
+                    show_fullscreen_image(image_base64)
     else:
         st.info("لا توجد صورة مرفقة")
 
@@ -492,31 +546,21 @@ def show_bag_details_dialog(index_in_json):
     else:
         camera_file = st.camera_input("تصوير الإيصال")
     
-    img_path = b.get("image_path", "")
-    if img_path and os.path.exists(img_path):
+    # عرض الصورة الحالية
+    current_image_base64 = b.get("image_base64", "")
+    if current_image_base64:
         st.write(f"**{tr('Receipt Image')}:**")
-        display_image_with_click(img_path)
+        display_image_from_base64(current_image_base64, b['bag_number'])
             
     if st.button(tr("Add") + " / " + tr("Update"), type="primary"):
         b["customer_id"] = cust_id.strip()
         
+        # حفظ الصورة كـ Base64
         if camera_file is not None:
-            saved_img_name = f"bag_{b['bag_number']}.png"
-            full_save_path = os.path.join(IMAGE_DIR, saved_img_name)
-            image = Image.open(camera_file)
-            image.save(full_save_path, "PNG", quality=100, optimize=False)
-            b["image_path"] = full_save_path
+            b["image_base64"] = image_to_base64(camera_file)
         elif uploaded_file is not None:
-            file_ext = os.path.splitext(uploaded_file.name)[1]
-            saved_img_name = f"bag_{b['bag_number']}{file_ext}"
-            full_save_path = os.path.join(IMAGE_DIR, saved_img_name)
-            image = Image.open(uploaded_file)
-            if file_ext.lower() in ['.jpg', '.jpeg']:
-                image.save(full_save_path, "JPEG", quality=100, optimize=False)
-            else:
-                image.save(full_save_path, "PNG", quality=100, optimize=False)
-            b["image_path"] = full_save_path
-            
+            b["image_base64"] = image_to_base64(uploaded_file)
+        
         bags_fresh[index_in_json] = b
         save_data(bags_fresh)
         add_to_log(b['bag_number'], b['customer_name'], "Extra details/Image updated", st.session_state.current_branch)
@@ -533,7 +577,6 @@ if not st.session_state.logged_in:
     with col_l2:
         st.markdown("### 🔑 Branch Secure Login")
         
-        # تنسيق خاص لصفحة الدخول لجعل النص واضح
         st.markdown("""
         <style>
             div[data-testid="stSelectbox"] label, 
@@ -581,6 +624,26 @@ if not st.session_state.logged_in:
 bags_data = load_data()
 actions_log = load_logs()
 is_super_user = st.session_state.is_super_admin
+
+# تحويل البيانات القديمة (لو فيه صور كمسار) إلى Base64
+migration_needed = False
+for i, b in enumerate(bags_data):
+    if "image_path" in b and b["image_path"] and not b.get("image_base64"):
+        # محاولة تحويل الصورة القديمة إلى Base64
+        old_path = b["image_path"]
+        if os.path.exists(old_path):
+            try:
+                with open(old_path, "rb") as f:
+                    b["image_base64"] = base64.b64encode(f.read()).decode('utf-8')
+                migration_needed = True
+            except:
+                pass
+        # إزالة المسار القديم
+        # del b["image_path"]  # اختياري: لو عايز تشيل المسار القديم
+
+if migration_needed:
+    save_data(bags_data)
+    bags_data = load_data()
 
 menu_mapping = {
     tr("Add Bag"): "Add Bag",
@@ -689,6 +752,9 @@ if choice == "Add Bag":
         status = st.selectbox(tr("Status"), STATUS_OPTIONS, index=STATUS_OPTIONS.index(default_rec.get("status", "Received")) if edit_idx is not None else 0)
         notes = st.text_area(tr("Notes"), value=default_rec.get("notes", ""))
         
+        # إضافة رفع الصورة
+        uploaded_image = st.file_uploader(tr("Receipt Image"), type=["jpg", "jpeg", "png"], key="add_bag_image")
+        
         submit_btn = st.form_submit_button(tr("Add") if edit_idx is None else tr("Update"))
         
         if submit_btn:
@@ -709,7 +775,7 @@ if choice == "Add Bag":
                         "status_date": str(status_date),
                         "notes": notes.strip(),
                         "customer_id": default_rec.get("customer_id", ""),
-                        "image_path": default_rec.get("image_path", ""),
+                        "image_base64": image_to_base64(uploaded_image) if uploaded_image else default_rec.get("image_base64", ""),
                         "reminders_count": default_rec.get("reminders_count", 0),
                         "branch_owner": default_rec.get("branch_owner", st.session_state.current_branch)
                     }
@@ -732,7 +798,7 @@ if choice == "Add Bag":
             st.rerun()
 
 # ==========================================
-# --- القسم الثاني: عرض البيانات والبحث (مع checkbox) ---
+# --- القسم الثاني: عرض البيانات والبحث ---
 # ==========================================
 elif choice == "View / Stats":
     st.header(tr("View / Stats"))
@@ -792,19 +858,17 @@ elif choice == "View / Stats":
                 tr("Status"): b.get("status", ""),
                 tr("Date"): b.get("status_date", ""),
                 tr("Reminders"): check_marks,
-                "Select": False  # حقل الاختيار
+                "HasImage": "📷" if b.get("image_base64") else "❌",
+                "Select": False
             })
 
     if filtered_data:
-        # تحويل إلى DataFrame
         df_for_display = pd.DataFrame(filtered_data)
         df_for_display = df_for_display.drop(columns=['Index'])
         
-        # إعادة ترتيب الأعمدة لجعل Select في البداية
-        cols = ['Select'] + [col for col in df_for_display.columns if col != 'Select']
+        cols = ['Select', 'HasImage', 'Type'] + [col for col in df_for_display.columns if col not in ['Select', 'HasImage', 'Type']]
         df_for_display = df_for_display[cols]
         
-        # عرض الجدول مع checkbox باستخدام data_editor
         st.write("### 📋 قائمة الحقائب")
         st.caption("✅ يمكنك اختيار أكثر من باج عن طريق تفعيل الـ checkbox في عمود Select")
         
@@ -814,6 +878,7 @@ elif choice == "View / Stats":
             hide_index=True,
             column_config={
                 "Select": st.column_config.CheckboxColumn("✅ اختر", default=False),
+                "HasImage": st.column_config.TextColumn("📸 صورة"),
                 "Type": st.column_config.TextColumn("📌 النوع"),
                 tr("Customer Name"): st.column_config.TextColumn(tr("Customer Name")),
                 tr("Bag Number"): st.column_config.TextColumn(tr("Bag Number")),
@@ -826,22 +891,18 @@ elif choice == "View / Stats":
             key="bags_editor"
         )
         
-        # الحصول على الباجات المختارة
         selected_indices = []
         if edited_df is not None:
             for idx, row in edited_df.iterrows():
                 if row.get("Select", False):
-                    # إيجاد الـ Index الأصلي
                     original_index = filtered_data[idx]["Index"]
                     selected_indices.append(original_index)
         
         st.markdown("---")
         
-        # عرض الباجات المختارة
         if selected_indices:
             st.success(f"✅ تم اختيار {len(selected_indices)} باج")
             
-            # عرض ملخص الباجات المختارة
             with st.expander("📦 عرض الباجات المختارة"):
                 for idx in selected_indices:
                     if idx < len(bags_data):
@@ -850,7 +911,6 @@ elif choice == "View / Stats":
             
             st.markdown("---")
             
-            # إذا تم اختيار باج واحد فقط، عرض التفاصيل والأزرار
             if len(selected_indices) == 1:
                 actual_bag_index = selected_indices[0]
                 b_selected = bags_data[actual_bag_index]
@@ -866,16 +926,15 @@ elif choice == "View / Stats":
                 with col_info3:
                     st.metric(tr("Mobile"), f"{b_selected.get('country_code', '')}{b_selected.get('customer_mobile', '')}")
                 
-                # عرض الصورة
-                img_path = b_selected.get("image_path", "")
-                if img_path and os.path.exists(img_path):
+                # عرض الصورة من Base64
+                image_base64 = b_selected.get("image_base64", "")
+                if image_base64:
                     st.markdown("---")
                     st.write("📸 **صورة الإيصال:**")
-                    display_image_with_click(img_path)
+                    display_image_from_base64(image_base64, b_selected['bag_number'])
                 
                 st.markdown("---")
                 
-                # أزرار الواتساب
                 act_c1, act_c2 = st.columns(2)
                 with act_c1:
                     msg_ready = (
@@ -889,14 +948,6 @@ elif choice == "View / Stats":
                     st.markdown(f'<a href="{url_ready}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; padding:0.5rem; border:none; border-radius:0.5rem; cursor:pointer;">📱 رسالة جاهز للواتساب</button></a>', unsafe_allow_html=True)
                     
                 with act_c2:
-                    msg_remind = (
-                        f"السلام عليكم من {st.session_state.current_branch}.\n\n"
-                        f"نود تذكيركم بأن التصليح رقم (*{b_selected['bag_number']}*) لا يزال متاحاً للإستلام.\n"
-                        f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
-                        f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
-                        f"شكراً لتعاملكم معنا 🌹"
-                    )
-                    url_remind = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_remind)}"
                     if st.button("🔔 إرسال تذكير", use_container_width=True):
                         current_reminders = safe_int_convert(b_selected.get("reminders_count", 0))
                         bags_data[actual_bag_index]["reminders_count"] = current_reminders + 1
@@ -907,7 +958,6 @@ elif choice == "View / Stats":
                 
                 st.markdown("---")
                 
-                # أزرار التحكم
                 btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
                 
                 with btn_manage_col1:
