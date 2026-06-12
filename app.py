@@ -672,7 +672,7 @@ def show_bag_details_dialog(index_in_json):
 # --- شاشة تسجيل الدخول ---
 # ==========================================
 if not st.session_state.logged_in:
-    st.markdown('<div class="main-header"><h1>💎 Jawhara Management System</h1><p>RepairBag Pro Enterprise Multi-Branch 2026</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header"><h1>💎 Jawhara Repair Bags Control System</h1><p>Repair Bags Pro Enterprise V2.01</p></div>', unsafe_allow_html=True)
     
     col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
     with col_l2:
