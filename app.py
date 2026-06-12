@@ -786,7 +786,7 @@ with st.sidebar:
 # ==========================================
 # --- عرض الهيدر الجميل ---
 # ==========================================
-st.markdown('<div class="main-header"><h1>💎 Jawhara Management System</h1><p>RepairBag Pro Enterprise | Multi-Branch Solution 2026</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header"><h1>💎 Jawhara Repair Bags Control System</h1><p>Repair Bags Pro Enterprise V2.01</p></div>', unsafe_allow_html=True)
 
 # ==========================================
 # --- القسم الأول: إضافة وتعديل باج ---
