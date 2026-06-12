@@ -542,7 +542,7 @@ def show_bag_details_dialog(index_in_json):
         st.rerun()
 
 # ==========================================
-# --- شاشة تسجيل الدخول ---
+# --- شاشة تسجيل الدخول (نسخة بسيطة) ---
 # ==========================================
 if not st.session_state.logged_in:
     st.markdown('<div class="main-header"><h1>💎 Jawhara Management System</h1><p>RepairBag Pro Enterprise Multi-Branch 2026</p></div>', unsafe_allow_html=True)
@@ -551,51 +551,19 @@ if not st.session_state.logged_in:
     with col_l2:
         st.markdown("### 🔑 Branch Secure Login")
         
-        # تنسيق بسيط وفعال
-        st.markdown("""
-        <style>
-            /* تنسيق selectbox */
-            .stSelectbox > div > div {
-                background-color: #f0f2f6 !important;
-                border-radius: 10px !important;
-                border: 2px solid #1f538d !important;
-            }
-            
-            .stSelectbox > div > div > div {
-                color: #1a1a2e !important;
-                font-size: 1rem !important;
-            }
-            
-            /* تنسيق text input */
-            .stTextInput > div > div > input {
-                background-color: #f0f2f6 !important;
-                color: #1a1a2e !important;
-                border-radius: 10px !important;
-                border: 2px solid #1f538d !important;
-            }
-            
-            /* التسميات */
-            .stSelectbox label, .stTextInput label, .stCheckbox label {
-                color: #1a1a2e !important;
-                font-weight: bold !important;
-            }
-        </style>
-        """, unsafe_allow_html=True)
-        
         branches_list = list(branches_data_cloud.keys())
         try:
             last_idx = branches_list.index(st.session_state.last_branch_selection)
         except:
             last_idx = 0
         
-        selected_branch = st.selectbox("🏢 اختر الفرع / Choose Branch", branches_list, index=last_idx)
-        password_input = st.text_input("🔐 أدخل كلمة المرور / Enter Password", type="password")
+        # استخدام columns عشان تخلي الحقول واضحة
+        selected_branch = st.selectbox("اختر الفرع / Choose Branch", branches_list, index=last_idx)
+        password_input = st.text_input("كلمة المرور / Password", type="password")
         
-        col_rem1, col_rem2 = st.columns(2)
-        with col_rem1:
-            remember_me = st.checkbox("✅ تذكرني لمدة 3 أيام", value=True)
+        remember_me = st.checkbox("✅ تذكرني لمدة 3 أيام", value=True)
         
-        if st.button("🔐 Login / دخول", type="primary", use_container_width=True):
+        if st.button("دخول / Login", type="primary", use_container_width=True):
             correct_password = branches_data_cloud.get(selected_branch, {}).get("password", "0000")
             if password_input == correct_password or password_input == SUPER_ADMIN_PASSWORD:
                 st.session_state.logged_in = True
@@ -610,7 +578,7 @@ if not st.session_state.logged_in:
                 st.success(f"Welcome back, {selected_branch}!")
                 st.rerun()
             else:
-                st.error("Incorrect Password! Please try again.")
+                st.error("كلمة المرور غير صحيحة / Incorrect Password")
     st.stop()
 
 # تحميل البيانات بعد شاشة الدخول
