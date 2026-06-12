@@ -33,23 +33,38 @@ st.markdown("""
     }
     
     /* تنسيق الشريط الجانبي */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
-        padding-top: 2rem;
-    }
-    
-    [data-testid="stSidebar"] .stMarkdown, 
-    [data-testid="stSidebar"] .stRadio label,
-    [data-testid="stSidebar"] .stSelectbox label,
-    [data-testid="stSidebar"] .stTextInput label {
-        color: #ffffff !important;
-    }
-    
-    [data-testid="stSidebar"] h1, 
-    [data-testid="stSidebar"] h2, 
-    [data-testid="stSidebar"] h3 {
-        color: #FFFFFF!important;
-    }
+   [data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    padding-top: 2rem;
+}
+
+[data-testid="stSidebar"] .stMarkdown, 
+[data-testid="stSidebar"] .stRadio label,
+[data-testid="stSidebar"] .stSelectbox label,
+[data-testid="stSidebar"] .stTextInput label,
+[data-testid="stSidebar"] .stCheckbox label,
+[data-testid="stSidebar"] .stSelectbox div,
+[data-testid="stSidebar"] .stNumberInput label {
+    color: #ffffff !important;
+}
+
+[data-testid="stSidebar"] h1, 
+[data-testid="stSidebar"] h2, 
+[data-testid="stSidebar"] h3 {
+    color: #FFD700 !important;
+}
+
+[data-testid="stSidebar"] .stMarkdown p,
+[data-testid="stSidebar"] .stMarkdown span,
+[data-testid="stSidebar"] .stCaption {
+    color: #ffffff !important;
+}
+
+/* النصوص في أي مكان تاني داخل السايد بار */
+[data-testid="stSidebar"] * {
+    color: #ffffff !important;
+}
+
     
     /* النصوص في الشريط الجانبي */
     [data-testid="stSidebar"] .stMarkdown {
