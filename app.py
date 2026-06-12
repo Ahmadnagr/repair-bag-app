@@ -544,9 +544,6 @@ def show_bag_details_dialog(index_in_json):
 # ==========================================
 # --- شاشة تسجيل الدخول ---
 # ==========================================
-# ==========================================
-# --- شاشة تسجيل الدخول ---
-# ==========================================
 if not st.session_state.logged_in:
     st.markdown('<div class="main-header"><h1>💎 Jawhara Management System</h1><p>RepairBag Pro Enterprise Multi-Branch 2026</p></div>', unsafe_allow_html=True)
     
@@ -554,75 +551,33 @@ if not st.session_state.logged_in:
     with col_l2:
         st.markdown("### 🔑 Branch Secure Login")
         
-        # تنسيق كامل لصفحة الدخول
+        # تنسيق بسيط وفعال
         st.markdown("""
         <style>
-            /* تنسيق حقل selectbox */
-            div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
-                background-color: #1a1a2e !important;
-                color: white !important;
-                border: 2px solid #FFD700 !important;
+            /* تنسيق selectbox */
+            .stSelectbox > div > div {
+                background-color: #f0f2f6 !important;
                 border-radius: 10px !important;
+                border: 2px solid #1f538d !important;
+            }
+            
+            .stSelectbox > div > div > div {
+                color: #1a1a2e !important;
                 font-size: 1rem !important;
             }
             
-            /* النص المختار */
-            div[data-testid="stSelectbox"] div[data-baseweb="select"] span {
-                color: white !important;
-            }
-            
-            /* السهم المنسدل */
-            div[data-testid="stSelectbox"] svg {
-                fill: #FFD700 !important;
-            }
-            
-            /* القائمة المنسدلة */
-            div[role="listbox"] div {
-                background-color: #1a1a2e !important;
-                color: white !important;
-            }
-            
-            /* الخيارات عند المرور */
-            div[role="listbox"] div:hover {
-                background-color: #FFD700 !important;
+            /* تنسيق text input */
+            .stTextInput > div > div > input {
+                background-color: #f0f2f6 !important;
                 color: #1a1a2e !important;
-            }
-            
-            /* تنسيق حقل كلمة المرور */
-            div[data-testid="stTextInput"] input {
-                background-color: #1a1a2e !important;
-                color: white !important;
-                border: 2px solid #FFD700 !important;
                 border-radius: 10px !important;
+                border: 2px solid #1f538d !important;
             }
             
-            div[data-testid="stTextInput"] input::placeholder {
-                color: #aaaaaa !important;
-            }
-            
-            /* تسميات الحقول */
-            div[data-testid="stSelectbox"] label, 
-            div[data-testid="stTextInput"] label,
-            div[data-testid="stCheckbox"] label {
+            /* التسميات */
+            .stSelectbox label, .stTextInput label, .stCheckbox label {
                 color: #1a1a2e !important;
                 font-weight: bold !important;
-                font-size: 1rem !important;
-            }
-            
-            /* تنسيق زر الدخول */
-            .stButton button {
-                background: linear-gradient(90deg, #1f538d, #2c3e6d) !important;
-                color: white !important;
-                border: none !important;
-                border-radius: 12px !important;
-                padding: 0.6rem !important;
-                font-weight: bold !important;
-            }
-            
-            .stButton button:hover {
-                background: linear-gradient(90deg, #FFD700, #e6c200) !important;
-                color: #1a1a2e !important;
-                cursor: pointer;
             }
         </style>
         """, unsafe_allow_html=True)
@@ -634,7 +589,7 @@ if not st.session_state.logged_in:
             last_idx = 0
         
         selected_branch = st.selectbox("🏢 اختر الفرع / Choose Branch", branches_list, index=last_idx)
-        password_input = st.text_input("🔐 أدخل كلمة المرور / Enter Password", type="password", placeholder="••••••")
+        password_input = st.text_input("🔐 أدخل كلمة المرور / Enter Password", type="password")
         
         col_rem1, col_rem2 = st.columns(2)
         with col_rem1:
