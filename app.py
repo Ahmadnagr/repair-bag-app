@@ -719,7 +719,7 @@ with st.sidebar:
 # ==========================================
 # --- عرض الهيدر الجميل ---
 # ==========================================
-st.markdown('<div class="main-header"><h1>💎 Jawhara Management System</h1><p>RepairBag Pro Enterprise | Multi-Branch Solution 2026</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header"><h1>💎 Jawhara Repair Bags Control System</h1><p>RepairBag Pro Enterprise | Multi-Branch Solution 2026</p></div>', unsafe_allow_html=True)
 
 # ==========================================
 # --- القسم الأول: إضافة وتعديل باج ---
@@ -869,7 +869,7 @@ elif choice == "View / Stats":
         cols = ['Select', 'HasImage', 'Type'] + [col for col in df_for_display.columns if col not in ['Select', 'HasImage', 'Type']]
         df_for_display = df_for_display[cols]
         
-        st.write("### 📋 قائمة الحقائب")
+        st.write("### 📋 Bags List")
         st.caption("✅ يمكنك اختيار أكثر من باج عن طريق تفعيل الـ checkbox في عمود Select")
         
         edited_df = st.data_editor(
@@ -937,27 +937,56 @@ elif choice == "View / Stats":
                 
                 act_c1, act_c2 = st.columns(2)
                 with act_c1:
-                    msg_ready = (
-                        f"السلام عليكم من {st.session_state.current_branch}.\n\n"
-                        f"يرجى العلم بأن التصليح الخاص بكم رقم (*{b_selected['bag_number']}*) جاهز للإستلام بالفرع.\n"
-                        f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
-                        f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
-                        f"شكراً لتعاملكم معنا 🌹"
-                    )
-                    url_ready = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_ready)}"
-                    st.markdown(f'<a href="{url_ready}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; padding:0.5rem; border:none; border-radius:0.5rem; cursor:pointer;">📱 رسالة جاهز للواتساب</button></a>', unsafe_allow_html=True)
-                    
-                with act_c2:
-                    if st.button("🔔 إرسال تذكير", use_container_width=True):
-                        current_reminders = safe_int_convert(b_selected.get("reminders_count", 0))
-                        bags_data[actual_bag_index]["reminders_count"] = current_reminders + 1
-                        save_data(bags_data)
-                        add_to_log(b_selected['bag_number'], b_selected['customer_name'], f"Reminder Sent (Total: {current_reminders + 1})", st.session_state.current_branch)
-                        st.success(f"📨 تم إرسال التذكير رقم {current_reminders + 1}")
-                        st.rerun()
-                
-                st.markdown("---")
-                
+    # رسالة الجاهزية (عربي + إنجليزي)
+    msg_ready = (
+        f"السلام عليكم من {st.session_state.current_branch}.\n\n"
+        f"يرجى العلم بأن التصليح الخاص بكم رقم (*{b_selected['bag_number']}*) جاهز للإستلام بالفرع.\n"
+        f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
+        f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
+        f"شكراً لتعاملكم معنا 🌹\n\n"
+        f"---------------------------\n\n"
+        f"Greetings from {st.session_state.current_branch}.\n\n"
+        f"Your repair bag (*{b_selected['bag_number']}*) is ready for collection at the store.\n"
+        f"Total Cost: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* AED.\n\n"
+        f"Kindly bring your repair receipt.\n"
+        f"Thank you for choosing us 🌹"
+    )
+    url_ready = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_ready)}"
+    st.markdown(f'<a href="{url_ready}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; padding:0.5rem; border:none; border-radius:0.5rem; cursor:pointer;">📱 رسالة جاهز للواتساب / Ready Message</button></a>', unsafe_allow_html=True)
+    
+with act_c2:
+    if st.button("🔔 إرسال تذكير / Send Reminder", use_container_width=True):
+        # رسالة التذكير (عربي + إنجليزي)
+        msg_remind = (
+            f"السلام عليكم من {st.session_state.current_branch}.\n\n"
+            f"نود تذكيركم بأن التصليح رقم (*{b_selected['bag_number']}*) لا يزال متاحاً للإستلام.\n"
+            f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
+            f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
+            f"شكراً لتعاملكم معنا 🌹\n\n"
+            f"---------------------------\n\n"
+            f"Greetings from {st.session_state.current_branch}.\n\n"
+            f"This is a friendly reminder that your repair bag (*{b_selected['bag_number']}*) is still waiting for collection.\n"
+            f"Total Cost: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* AED.\n\n"
+            f"Kindly bring your repair receipt.\n"
+            f"Thank you for choosing us 🌹"
+        )
+        url_remind = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_remind)}"
+        
+        # فتح رابط الواتساب في نافذة جديدة
+        st.markdown(f'<a href="{url_remind}" target="_blank" id="reminder_link_{actual_bag_index}"></a>', unsafe_allow_html=True)
+        
+        # تحديث عداد التذكيرات
+        current_reminders = safe_int_convert(b_selected.get("reminders_count", 0))
+        bags_data[actual_bag_index]["reminders_count"] = current_reminders + 1
+        save_data(bags_data)
+        add_to_log(b_selected['bag_number'], b_selected['customer_name'], f"Reminder Sent (Total: {current_reminders + 1})", st.session_state.current_branch)
+        st.success(f"📨 تم إرسال التذكير رقم {current_reminders + 1} / Reminder #{current_reminders + 1} sent")
+        
+        # تشغيل الرابط تلقائياً
+        st.markdown(f'<script>document.getElementById("reminder_link_{actual_bag_index}").click();</script>', unsafe_allow_html=True)
+        st.rerun()
+
+st.markdown("---")                
                 btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
                 
                 with btn_manage_col1:
