@@ -563,6 +563,37 @@ if not st.session_state.logged_in:
         </style>
         """, unsafe_allow_html=True)
         
+        # تنسيق خاص لجعل النص داخل selectbox واضح
+        st.markdown("""
+        <style>
+            /* جعل النص داخل selectbox في صفحة الدخول واضح */
+            div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+                background-color: white !important;
+                color: #1a1a2e !important;
+                border: 2px solid #1f538d !important;
+                font-size: 1rem !important;
+                font-weight: normal !important;
+            }
+            
+            /* النص المختار داخل selectbox */
+            div[data-testid="stSelectbox"] div[data-baseweb="select"] span {
+                color: #1a1a2e !important;
+            }
+            
+            /* القائمة المنسدلة نفسها */
+            div[role="listbox"] div {
+                background-color: white !important;
+                color: #1a1a2e !important;
+            }
+            
+            /* الخيارات عند المرور عليها */
+            div[role="listbox"] div:hover {
+                background-color: #1f538d !important;
+                color: white !important;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+        
         branches_list = list(branches_data_cloud.keys())
         try:
             last_idx = branches_list.index(st.session_state.last_branch_selection)
