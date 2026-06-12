@@ -32,43 +32,38 @@ st.markdown("""
         background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
     }
     
-    /* تنسيق الشريط الجانبي */
-   [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
-    padding-top: 2rem;
-}
-
-[data-testid="stSidebar"] .stMarkdown, 
-[data-testid="stSidebar"] .stRadio label,
-[data-testid="stSidebar"] .stSelectbox label,
-[data-testid="stSidebar"] .stTextInput label,
-[data-testid="stSidebar"] .stCheckbox label,
-[data-testid="stSidebar"] .stSelectbox div,
-[data-testid="stSidebar"] .stNumberInput label {
-    color: #ffffff !important;
-}
-
-[data-testid="stSidebar"] h1, 
-[data-testid="stSidebar"] h2, 
-[data-testid="stSidebar"] h3 {
-    color: #FFD700 !important;
-}
-
-[data-testid="stSidebar"] .stMarkdown p,
-[data-testid="stSidebar"] .stMarkdown span,
-[data-testid="stSidebar"] .stCaption {
-    color: #ffffff !important;
-}
-
-/* النصوص في أي مكان تاني داخل السايد بار */
-[data-testid="stSidebar"] * {
-    color: #ffffff !important;
-}
-
+    /* ===== تنسيق الشريط الجانبي ===== */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+        padding-top: 2rem;
+    }
     
-    /* النصوص في الشريط الجانبي */
-    [data-testid="stSidebar"] .stMarkdown {
-        color: #FFFFFF !important;
+    /* كل الكتابة في السايد بار بيضاء */
+    [data-testid="stSidebar"] * {
+        color: #ffffff !important;
+    }
+    
+    /* عناوين السايد بار باللون الذهبي */
+    [data-testid="stSidebar"] h1, 
+    [data-testid="stSidebar"] h2, 
+    [data-testid="stSidebar"] h3 {
+        color: #FFD700 !important;
+    }
+    
+    /* المربعات البيضاء في السايد بار تبقى بنفس لون الخلفية */
+    [data-testid="stSidebar"] input,
+    [data-testid="stSidebar"] textarea,
+    [data-testid="stSidebar"] select,
+    [data-testid="stSidebar"] div[data-baseweb="select"] > div {
+        background-color: #0f0f1a !important;
+        color: #ffffff !important;
+        border-color: #FFD700 !important;
+    }
+    
+    /* خيارات الـ selectbox في السايد بار */
+    [data-testid="stSidebar"] div[role="listbox"] div {
+        background-color: #0f0f1a !important;
+        color: #ffffff !important;
     }
     
     /* تنسيق الأزرار */
@@ -89,13 +84,17 @@ st.markdown("""
         background: linear-gradient(90deg, #2c3e6d, #1f538d);
     }
     
-    /* تنسيق البطاقات - خلفية بيضاء وكتابة واضحة */
+    /* تنسيق البطاقات */
     [data-testid="stMetric"] {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 1rem;
         border-radius: 20px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         transition: transform 0.3s;
+    }
+    
+    [data-testid="stMetric"]:hover {
+        transform: translateY(-5px);
     }
     
     [data-testid="stMetric"] label {
@@ -110,7 +109,7 @@ st.markdown("""
         font-weight: bold;
     }
     
-    /* تنسيق حقول الإدخال - خلفية بيضاء وكتابة داكنة */
+    /* تنسيق حقول الإدخال */
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea,
     .stSelectbox > div > div {
@@ -139,7 +138,7 @@ st.markdown("""
         font-size: 0.9rem !important;
     }
     
-    /* تنسيق الجداول */
+    /* تنسيق الجدول */
     [data-testid="stDataFrame"] table,
     [data-testid="stTable"] table {
         border-radius: 16px;
@@ -160,6 +159,12 @@ st.markdown("""
         color: #1a1a2e !important;
         padding: 10px;
         border-bottom: 1px solid #eee;
+    }
+    
+    /* الصف المحدد في الجدول */
+    [data-testid="stDataFrame"] tr.selected td {
+        background-color: rgba(31, 83, 141, 0.2) !important;
+        border-left: 3px solid #1f538d;
     }
     
     /* تنسيق التنبيهات */
@@ -210,13 +215,8 @@ st.markdown("""
         font-size: 1rem;
     }
     
-    /* تنسيق العناوين الرئيسية */
+    /* العناوين الرئيسية */
     h1, h2, h3, h4, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
-        color: #1a1a2e !important;
-    }
-    
-    /* تنسيق النصوص العادية */
-    p, span, div, .stMarkdown {
         color: #1a1a2e !important;
     }
     
@@ -226,11 +226,6 @@ st.markdown("""
         border-radius: 12px;
         font-weight: 600;
         color: #1f538d !important;
-    }
-    
-    .streamlit-expanderContent {
-        background-color: white !important;
-        border-radius: 12px;
     }
     
     /* تنسيق الراديو */
@@ -268,24 +263,6 @@ st.markdown("""
         border-radius: 10px;
     }
     
-    /* تأثيرات حركية */
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    [data-testid="stMetric"], 
-    .stButton > button,
-    .stAlert {
-        animation: fadeInUp 0.5s ease forwards;
-    }
-    
     /* تنسيق الصور */
     .image-container {
         cursor: pointer;
@@ -295,39 +272,6 @@ st.markdown("""
     
     .image-container:hover {
         transform: scale(1.02);
-    }
-    
-    /* تنسيق رسائل النجاح والخطأ */
-    .stSuccess, .stError, .stInfo, .stWarning {
-        background-color: white !important;
-        border-radius: 12px !important;
-    }
-    
-    /* تنسيق معلومات الجدول */
-    .stInfo {
-        color: #1a1a2e !important;
-    }
-    
-    /* تنسيق الـ selectbox في القائمة المنسدلة */
-    .stSelectbox div[data-baseweb="select"] > div {
-        background-color: white !important;
-        color: #1a1a2e !important;
-    }
-    
-    /* تنسيق خيارات الـ selectbox */
-    div[role="listbox"] div {
-        color: #1a1a2e !important;
-        background-color: white !important;
-    }
-    
-    /* تنسيق الـ checkbox */
-    .stCheckbox label span {
-        color: #1a1a2e !important;
-    }
-    
-    /* تنسيق الـ metric label */
-    div[data-testid="stMetric"] p {
-        color: white !important;
     }
 </style>
 
@@ -341,7 +285,6 @@ st.markdown("""
 # --- إدارة الكوكيز (تذكر الدخول لمدة 3 أيام) ---
 # ==========================================
 def set_login_cookie(branch_name, is_super_admin=False):
-    """حفظ بيانات الدخول في الكوكيز لمدة 3 أيام"""
     expiry_date = (datetime.now() + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S")
     cookie_data = {
         "branch": branch_name,
@@ -351,7 +294,6 @@ def set_login_cookie(branch_name, is_super_admin=False):
     st.session_state["login_cookie"] = cookie_data
 
 def get_login_cookie():
-    """استرجاع بيانات الدخول من الكوكيز إذا كانت صالحة"""
     if "login_cookie" in st.session_state:
         cookie = st.session_state["login_cookie"]
         try:
@@ -363,7 +305,6 @@ def get_login_cookie():
     return None, False
 
 def clear_login_cookie():
-    """مسح الكوكيز عند تسجيل الخروج"""
     if "login_cookie" in st.session_state:
         del st.session_state["login_cookie"]
 
@@ -494,8 +435,8 @@ if "language" not in st.session_state:
     st.session_state.language = "en"
 if "current_edit_index" not in st.session_state:
     st.session_state.current_edit_index = None
-if "selected_row_idx" not in st.session_state:
-    st.session_state.selected_row_idx = 0
+if "selected_row_index" not in st.session_state:
+    st.session_state.selected_row_index = None
 if "active_menu" not in st.session_state:
     st.session_state.active_menu = "Add Bag"
 if "logged_in" not in st.session_state:
@@ -564,7 +505,6 @@ def tr(text):
 # ==========================================
 @st.dialog("📸 الصورة بحجم كامل", width="large")
 def show_fullscreen_image(image_path):
-    """عرض الصورة بحجم كامل عند الضغط عليها"""
     if os.path.exists(image_path):
         image = Image.open(image_path)
         st.image(image, use_container_width=True)
@@ -573,7 +513,6 @@ def show_fullscreen_image(image_path):
         st.error("الصورة غير موجودة")
 
 def display_image_with_click(img_path):
-    """عرض صورة قابلة للضغط لفتحها بحجم كامل"""
     if img_path and os.path.exists(img_path):
         image = Image.open(img_path)
         col1, col2, col3 = st.columns([1, 2, 1])
@@ -598,19 +537,15 @@ def confirm_delete_dialog(bag_index, bag_number, customer_name):
             if bag_index < len(bags_data):
                 bags_data.pop(bag_index)
                 save_data(bags_data)
-            st.session_state.selected_row_idx = 0
-            st.session_state.confirm_delete = False
-            st.session_state.delete_target_index = None
+            st.session_state.selected_row_index = None
             st.success("Deleted successfully!")
             st.rerun()
     with col2:
         if st.button(tr("Cancel"), use_container_width=True):
-            st.session_state.confirm_delete = False
-            st.session_state.delete_target_index = None
             st.rerun()
 
 # ==========================================
-# --- نافذة تفاصيل الباج (جودة عالية للصور) ---
+# --- نافذة تفاصيل الباج ---
 # ==========================================
 @st.dialog("Bag Extra Details & Management", width="large")
 def show_bag_details_dialog(index_in_json):
@@ -635,7 +570,6 @@ def show_bag_details_dialog(index_in_json):
     else:
         camera_file = st.camera_input("تصوير الإيصال")
     
-    # عرض الصورة الحالية مع إمكانية تكبيرها
     img_path = b.get("image_path", "")
     if img_path and os.path.exists(img_path):
         st.write(f"**{tr('Receipt Image')}:**")
@@ -644,7 +578,6 @@ def show_bag_details_dialog(index_in_json):
     if st.button(tr("Add") + " / " + tr("Update"), type="primary"):
         b["customer_id"] = cust_id.strip()
         
-        # حفظ الصورة بجودة عالية
         if camera_file is not None:
             saved_img_name = f"bag_{b['bag_number']}.png"
             full_save_path = os.path.join(IMAGE_DIR, saved_img_name)
@@ -672,7 +605,7 @@ def show_bag_details_dialog(index_in_json):
 # --- شاشة تسجيل الدخول ---
 # ==========================================
 if not st.session_state.logged_in:
-    st.markdown('<div class="main-header"><h1>💎 Jawhara Repair Bags Control System</h1><p>Repair Bags Pro Enterprise V2.01</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header"><h1>💎 Jawhara Management System</h1><p>RepairBag Pro Enterprise Multi-Branch 2026</p></div>', unsafe_allow_html=True)
     
     col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
     with col_l2:
@@ -780,13 +713,13 @@ with st.sidebar:
         st.session_state.current_branch = None
         st.session_state.is_super_admin = False
         st.session_state.current_edit_index = None
-        st.session_state.selected_row_idx = 0
+        st.session_state.selected_row_index = None
         st.rerun()
 
 # ==========================================
 # --- عرض الهيدر الجميل ---
 # ==========================================
-st.markdown('<div class="main-header"><h1>💎 Jawhara Repair Bags Control System</h1><p>Repair Bags Pro Enterprise V2.01</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header"><h1>💎 Jawhara Management System</h1><p>RepairBag Pro Enterprise | Multi-Branch Solution 2026</p></div>', unsafe_allow_html=True)
 
 # ==========================================
 # --- القسم الأول: إضافة وتعديل باج ---
@@ -925,111 +858,114 @@ elif choice == "View / Stats":
             })
 
     if filtered_data:
-        st.info("💡 اختر الباج من القائمة المنسدلة أدناه")
+        # عرض الجدول مع إمكانية تحديد الصف
+        df_display = pd.DataFrame(filtered_data)
         
-        # عمل قائمة بالباجات
-        bag_options = []
-        for idx, row in enumerate(filtered_data):
-            bag_options.append(f"{row[tr('Bag Number')]} - {row[tr('Customer Name')]} ({row[tr('Status')]})")
-        
-        bag_options.insert(0, "-- اختر باج --")
-        
-        selected_option = st.selectbox(
-            "اختر الباج / Select a bag",
-            options=bag_options,
-            index=0,
-            key="bag_selector"
+        # عرض الجدول مع تفعيل التحديد
+        event = st.dataframe(
+            df_display.drop(columns=['Index']),
+            use_container_width=True,
+            hide_index=True,
+            selection_mode="single-row",
+            key="bags_table"
         )
         
-        if selected_option != "-- اختر باج --":
-            selected_index_in_filtered = bag_options.index(selected_option) - 1
+        # التحقق من الصف المحدد
+        if event and event.selection and event.selection.rows:
+            selected_row_idx = event.selection.rows[0]
+            if selected_row_idx < len(filtered_data):
+                actual_bag_index = filtered_data[selected_row_idx]["Index"]
+                st.session_state.selected_row_index = actual_bag_index
+        else:
+            st.session_state.selected_row_index = None
+        
+        st.markdown("---")
+        
+        # عرض تفاصيل الباج المختار وأزرار التحكم
+        if st.session_state.selected_row_index is not None:
+            b_selected = bags_data[st.session_state.selected_row_index]
+            whatsapp_num = format_whatsapp_number(b_selected.get('country_code', '+971'), b_selected.get('customer_mobile', ''))
             
-            if 0 <= selected_index_in_filtered < len(filtered_data):
-                actual_bag_index = filtered_data[selected_index_in_filtered]["Index"]
+            st.markdown(f"### 🎯 الباج المختار: **Bag #{b_selected['bag_number']}** ({b_selected['customer_name']})")
+            
+            col_info1, col_info2, col_info3 = st.columns(3)
+            with col_info1:
+                st.metric(tr("Status"), b_selected.get('status', 'Unknown'))
+            with col_info2:
+                st.metric(tr("Cost"), f"{safe_float_convert(b_selected.get('cost', 0)):.2f} AED")
+            with col_info3:
+                st.metric(tr("Mobile"), f"{b_selected.get('country_code', '')}{b_selected.get('customer_mobile', '')}")
+            
+            # عرض الصورة
+            img_path = b_selected.get("image_path", "")
+            if img_path and os.path.exists(img_path):
+                st.markdown("---")
+                st.write("📸 **صورة الإيصال:**")
+                display_image_with_click(img_path)
+            
+            st.markdown("---")
+            
+            # أزرار الواتساب
+            act_c1, act_c2 = st.columns(2)
+            with act_c1:
+                msg_ready = (
+                    f"السلام عليكم من {st.session_state.current_branch}.\n\n"
+                    f"يرجى العلم بأن التصليح الخاص بكم رقم (*{b_selected['bag_number']}*) جاهز للإستلام بالفرع.\n"
+                    f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
+                    f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
+                    f"شكراً لتعاملكم معنا 🌹"
+                )
+                url_ready = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_ready)}"
+                st.markdown(f'<a href="{url_ready}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; padding:0.5rem; border:none; border-radius:0.5rem; cursor:pointer;">📱 رسالة جاهز للواتساب</button></a>', unsafe_allow_html=True)
                 
-                if actual_bag_index < len(bags_data):
-                    b_selected = bags_data[actual_bag_index]
+            with act_c2:
+                msg_remind = (
+                    f"السلام عليكم من {st.session_state.current_branch}.\n\n"
+                    f"نود تذكيركم بأن التصليح رقم (*{b_selected['bag_number']}*) لا يزال متاحاً للإستلام.\n"
+                    f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
+                    f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
+                    f"شكراً لتعاملكم معنا 🌹"
+                )
+                url_remind = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_remind)}"
+                if st.button("🔔 إرسال تذكير", use_container_width=True):
+                    current_reminders = safe_int_convert(b_selected.get("reminders_count", 0))
+                    bags_data[st.session_state.selected_row_index]["reminders_count"] = current_reminders + 1
+                    save_data(bags_data)
+                    add_to_log(b_selected['bag_number'], b_selected['customer_name'], f"Reminder Sent (Total: {current_reminders + 1})", st.session_state.current_branch)
+                    st.success(f"📨 تم إرسال التذكير رقم {current_reminders + 1}")
+                    st.rerun()
+            
+            st.markdown("---")
+            
+            # أزرار التحكم
+            btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
+            
+            with btn_manage_col1:
+                if st.button(tr("Manage & Details 📝"), use_container_width=True, type="secondary"):
+                    show_bag_details_dialog(st.session_state.selected_row_index)
                     
-                    whatsapp_num = format_whatsapp_number(b_selected.get('country_code', '+971'), b_selected.get('customer_mobile', ''))
-                    
-                    st.markdown("---")
-                    st.markdown(f"### 🎯 الباج المختار: **Bag #{b_selected['bag_number']}** ({b_selected['customer_name']})")
-                    
-                    col_info1, col_info2, col_info3 = st.columns(3)
-                    with col_info1:
-                        st.metric(tr("Status"), b_selected.get('status', 'Unknown'))
-                    with col_info2:
-                        st.metric(tr("Cost"), f"{safe_float_convert(b_selected.get('cost', 0)):.2f} AED")
-                    with col_info3:
-                        st.metric(tr("Mobile"), f"{b_selected.get('country_code', '')}{b_selected.get('customer_mobile', '')}")
-                    
-                    # عرض الصورة إذا وجدت
-                    img_path = b_selected.get("image_path", "")
-                    if img_path and os.path.exists(img_path):
-                        st.markdown("---")
-                        st.write("📸 **صورة الإيصال:**")
-                        display_image_with_click(img_path)
-                    
-                    st.markdown("---")
-                    
-                    act_c1, act_c2 = st.columns(2)
-                    with act_c1:
-                        msg_ready = (
-                            f"السلام عليكم من {st.session_state.current_branch}.\n\n"
-                            f"يرجى العلم بأن التصليح الخاص بكم رقم (*{b_selected['bag_number']}*) جاهز للإستلام بالفرع.\n"
-                            f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
-                            f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
-                            f"شكراً لتعاملكم معنا 🌹"
-                        )
-                        url_ready = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_ready)}"
-                        st.markdown(f'<a href="{url_ready}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; padding:0.5rem; border:none; border-radius:0.5rem; cursor:pointer;">📱 رسالة جاهز للواتساب</button></a>', unsafe_allow_html=True)
+            with btn_manage_col2:
+                password_input = st.text_input("Admin Password", type="password", label_visibility="collapsed", placeholder="Password to Edit/Delete", key="admin_panel_p")
+                
+            with btn_manage_col3:
+                if st.button(tr("Edit"), use_container_width=True):
+                    branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
+                    if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
+                        st.session_state.current_edit_index = st.session_state.selected_row_index
+                        st.session_state.active_menu = "Add Bag"
+                        st.rerun()
+                    else:
+                        st.error("Incorrect Password!")
                         
-                    with act_c2:
-                        msg_remind = (
-                            f"السلام عليكم من {st.session_state.current_branch}.\n\n"
-                            f"نود تذكيركم بأن التصليح رقم (*{b_selected['bag_number']}*) لا يزال متاحاً للإستلام.\n"
-                            f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
-                            f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
-                            f"شكراً لتعاملكم معنا 🌹"
-                        )
-                        url_remind = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_remind)}"
-                        st.markdown(f'<a href="{url_remind}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; padding:0.5rem; border:none; border-radius:0.5rem; cursor:pointer;">🔔 إرسال تذكير</button></a>', unsafe_allow_html=True)
-                        
-                        # تحديث عداد التذكيرات
-                        current_reminders = safe_int_convert(b_selected.get("reminders_count", 0))
-                        bags_data[actual_bag_index]["reminders_count"] = current_reminders + 1
-                        save_data(bags_data)
-                        add_to_log(b_selected['bag_number'], b_selected['customer_name'], f"Reminder Sent (Total: {current_reminders + 1})", st.session_state.current_branch)
-                        st.info(f"📨 تم إرسال التذكير رقم {current_reminders + 1}")
-                    
-                    st.markdown("---")
-                    
-                    btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
-                    
-                    with btn_manage_col1:
-                        if st.button(tr("Manage & Details 📝"), use_container_width=True, type="secondary"):
-                            show_bag_details_dialog(actual_bag_index)
-                            
-                    with btn_manage_col2:
-                        password_input = st.text_input("Admin Password", type="password", label_visibility="collapsed", placeholder="Password to Edit/Delete", key="admin_panel_p")
-                        
-                    with btn_manage_col3:
-                        if st.button(tr("Edit"), use_container_width=True):
-                            branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
-                            if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
-                                st.session_state.current_edit_index = actual_bag_index
-                                st.session_state.active_menu = "Add Bag"
-                                st.rerun()
-                            else:
-                                st.error("Incorrect Password!")
-                                
-                    with btn_manage_col4:
-                        if st.button(tr("Delete"), use_container_width=True):
-                            branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
-                            if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
-                                confirm_delete_dialog(actual_bag_index, b_selected['bag_number'], b_selected['customer_name'])
-                            else:
-                                st.error("Incorrect Password!")
+            with btn_manage_col4:
+                if st.button(tr("Delete"), use_container_width=True):
+                    branch_pass = branches_data_cloud.get(st.session_state.current_branch, {}).get("password", "0000")
+                    if password_input == branch_pass or password_input == SUPER_ADMIN_PASSWORD:
+                        confirm_delete_dialog(st.session_state.selected_row_index, b_selected['bag_number'], b_selected['customer_name'])
+                    else:
+                        st.error("Incorrect Password!")
+        else:
+            st.info("👆 قم بتحديد صف من الجدول أعلاه لعرض التفاصيل وأزرار التحكم")
     else:
         st.info("لا توجد بيانات مطابقة للبحث")
 
