@@ -17,24 +17,15 @@ def image_to_base64(image_file) -> str:
     if image_file is None:
         return ""
     try:
-        # فتح الصورة وتحويلها
         image = Image.open(image_file)
-        
-        # تحويل الصورة إلى RGB إذا كانت RGBA (للتأكد من التوافق مع JPEG)
         if image.mode == 'RGBA':
             image = image.convert('RGB')
-        
-        # حفظ الصورة في ذاكرة مؤقتة
         buffer = io.BytesIO()
-        
-        # تحديد نوع الملف
         if hasattr(image_file, 'name') and image_file.name:
             file_ext = os.path.splitext(image_file.name)[1].lower()
             if file_ext in ['.jpg', '.jpeg']:
                 image.save(buffer, format='JPEG', quality=85)
                 return base64.b64encode(buffer.getvalue()).decode('utf-8')
-        
-        # الوضع الافتراضي (PNG)
         image.save(buffer, format='PNG')
         return base64.b64encode(buffer.getvalue()).decode('utf-8')
     except Exception as e:
@@ -54,22 +45,6 @@ def base64_to_image(base64_str: str, save_path: str = None):
     except Exception as e:
         print(f"Error converting base64 to image: {e}")
         return None
-
-def get_image_base64_from_bag(bag_data):
-    """استخراج الصورة من بيانات الباج (سواء كانت مسار أو Base64)"""
-    image_data = bag_data.get("image_base64", "")
-    if image_data:
-        return image_data
-    
-    # للتوافق مع النسخ القديمة (لو في صور محفوظة كمسار)
-    old_image_path = bag_data.get("image_path", "")
-    if old_image_path and os.path.exists(old_image_path):
-        try:
-            with open(old_image_path, "rb") as f:
-                return base64.b64encode(f.read()).decode('utf-8')
-        except:
-            pass
-    return ""
 
 # ==========================================
 # --- إعدادات الصفحة العامة ---
@@ -629,7 +604,6 @@ is_super_user = st.session_state.is_super_admin
 migration_needed = False
 for i, b in enumerate(bags_data):
     if "image_path" in b and b["image_path"] and not b.get("image_base64"):
-        # محاولة تحويل الصورة القديمة إلى Base64
         old_path = b["image_path"]
         if os.path.exists(old_path):
             try:
@@ -638,8 +612,6 @@ for i, b in enumerate(bags_data):
                 migration_needed = True
             except:
                 pass
-        # إزالة المسار القديم
-        # del b["image_path"]  # اختياري: لو عايز تشيل المسار القديم
 
 if migration_needed:
     save_data(bags_data)
@@ -719,7 +691,7 @@ with st.sidebar:
 # ==========================================
 # --- عرض الهيدر الجميل ---
 # ==========================================
-st.markdown('<div class="main-header"><h1>💎 Jawhara Repair Bags Control System</h1><p>RepairBag Pro Enterprise | Multi-Branch Solution 2026</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header"><h1>💎 Jawhara Management System</h1><p>RepairBag Pro Enterprise | Multi-Branch Solution 2026</p></div>', unsafe_allow_html=True)
 
 # ==========================================
 # --- القسم الأول: إضافة وتعديل باج ---
@@ -752,7 +724,6 @@ if choice == "Add Bag":
         status = st.selectbox(tr("Status"), STATUS_OPTIONS, index=STATUS_OPTIONS.index(default_rec.get("status", "Received")) if edit_idx is not None else 0)
         notes = st.text_area(tr("Notes"), value=default_rec.get("notes", ""))
         
-        # إضافة رفع الصورة
         uploaded_image = st.file_uploader(tr("Receipt Image"), type=["jpg", "jpeg", "png"], key="add_bag_image")
         
         submit_btn = st.form_submit_button(tr("Add") if edit_idx is None else tr("Update"))
@@ -869,7 +840,7 @@ elif choice == "View / Stats":
         cols = ['Select', 'HasImage', 'Type'] + [col for col in df_for_display.columns if col not in ['Select', 'HasImage', 'Type']]
         df_for_display = df_for_display[cols]
         
-        st.write("### 📋 Bags List")
+        st.write("### 📋 قائمة الحقائب")
         st.caption("✅ يمكنك اختيار أكثر من باج عن طريق تفعيل الـ checkbox في عمود Select")
         
         edited_df = st.data_editor(
@@ -937,56 +908,57 @@ elif choice == "View / Stats":
                 
                 act_c1, act_c2 = st.columns(2)
                 with act_c1:
-    # رسالة الجاهزية (عربي + إنجليزي)
-    msg_ready = (
-        f"السلام عليكم من {st.session_state.current_branch}.\n\n"
-        f"يرجى العلم بأن التصليح الخاص بكم رقم (*{b_selected['bag_number']}*) جاهز للإستلام بالفرع.\n"
-        f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
-        f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
-        f"شكراً لتعاملكم معنا 🌹\n\n"
-        f"---------------------------\n\n"
-        f"Greetings from {st.session_state.current_branch}.\n\n"
-        f"Your repair bag (*{b_selected['bag_number']}*) is ready for collection at the store.\n"
-        f"Total Cost: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* AED.\n\n"
-        f"Kindly bring your repair receipt.\n"
-        f"Thank you for choosing us 🌹"
-    )
-    url_ready = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_ready)}"
-    st.markdown(f'<a href="{url_ready}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; padding:0.5rem; border:none; border-radius:0.5rem; cursor:pointer;">📱 رسالة جاهز للواتساب / Ready Message</button></a>', unsafe_allow_html=True)
-    
-with act_c2:
-    if st.button("🔔 إرسال تذكير / Send Reminder", use_container_width=True):
-        # رسالة التذكير (عربي + إنجليزي)
-        msg_remind = (
-            f"السلام عليكم من {st.session_state.current_branch}.\n\n"
-            f"نود تذكيركم بأن التصليح رقم (*{b_selected['bag_number']}*) لا يزال متاحاً للإستلام.\n"
-            f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
-            f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
-            f"شكراً لتعاملكم معنا 🌹\n\n"
-            f"---------------------------\n\n"
-            f"Greetings from {st.session_state.current_branch}.\n\n"
-            f"This is a friendly reminder that your repair bag (*{b_selected['bag_number']}*) is still waiting for collection.\n"
-            f"Total Cost: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* AED.\n\n"
-            f"Kindly bring your repair receipt.\n"
-            f"Thank you for choosing us 🌹"
-        )
-        url_remind = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_remind)}"
-        
-        # فتح رابط الواتساب في نافذة جديدة
-        st.markdown(f'<a href="{url_remind}" target="_blank" id="reminder_link_{actual_bag_index}"></a>', unsafe_allow_html=True)
-        
-        # تحديث عداد التذكيرات
-        current_reminders = safe_int_convert(b_selected.get("reminders_count", 0))
-        bags_data[actual_bag_index]["reminders_count"] = current_reminders + 1
-        save_data(bags_data)
-        add_to_log(b_selected['bag_number'], b_selected['customer_name'], f"Reminder Sent (Total: {current_reminders + 1})", st.session_state.current_branch)
-        st.success(f"📨 تم إرسال التذكير رقم {current_reminders + 1} / Reminder #{current_reminders + 1} sent")
-        
-        # تشغيل الرابط تلقائياً
-        st.markdown(f'<script>document.getElementById("reminder_link_{actual_bag_index}").click();</script>', unsafe_allow_html=True)
-        st.rerun()
-
-st.markdown("---")                
+                    # رسالة الجاهزية (عربي + إنجليزي)
+                    msg_ready = (
+                        f"السلام عليكم من {st.session_state.current_branch}.\n\n"
+                        f"يرجى العلم بأن التصليح الخاص بكم رقم (*{b_selected['bag_number']}*) جاهز للإستلام بالفرع.\n"
+                        f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
+                        f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
+                        f"شكراً لتعاملكم معنا 🌹\n\n"
+                        f"---------------------------\n\n"
+                        f"Greetings from {st.session_state.current_branch}.\n\n"
+                        f"Your repair bag (*{b_selected['bag_number']}*) is ready for collection at the store.\n"
+                        f"Total Cost: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* AED.\n\n"
+                        f"Kindly bring your repair receipt.\n"
+                        f"Thank you for choosing us 🌹"
+                    )
+                    url_ready = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_ready)}"
+                    st.markdown(f'<a href="{url_ready}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; padding:0.5rem; border:none; border-radius:0.5rem; cursor:pointer;">📱 رسالة جاهز للواتساب / Ready Message</button></a>', unsafe_allow_html=True)
+                    
+                with act_c2:
+                    if st.button("🔔 إرسال تذكير / Send Reminder", use_container_width=True):
+                        # رسالة التذكير (عربي + إنجليزي)
+                        msg_remind = (
+                            f"السلام عليكم من {st.session_state.current_branch}.\n\n"
+                            f"نود تذكيركم بأن التصليح رقم (*{b_selected['bag_number']}*) لا يزال متاحاً للإستلام.\n"
+                            f"التكلفة الإجمالية: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* درهم.\n\n"
+                            f"يرجى إحضار الإيصال الخاص بالاستلام.\n"
+                            f"شكراً لتعاملكم معنا 🌹\n\n"
+                            f"---------------------------\n\n"
+                            f"Greetings from {st.session_state.current_branch}.\n\n"
+                            f"This is a friendly reminder that your repair bag (*{b_selected['bag_number']}*) is still waiting for collection.\n"
+                            f"Total Cost: *{safe_float_convert(b_selected.get('cost', 0)):.2f}* AED.\n\n"
+                            f"Kindly bring your repair receipt.\n"
+                            f"Thank you for choosing us 🌹"
+                        )
+                        url_remind = f"https://api.whatsapp.com/send?phone={whatsapp_num}&text={urllib.parse.quote(msg_remind)}"
+                        
+                        # فتح رابط الواتساب في نافذة جديدة
+                        st.markdown(f'<a href="{url_remind}" target="_blank" id="reminder_link_{actual_bag_index}"></a>', unsafe_allow_html=True)
+                        
+                        # تحديث عداد التذكيرات
+                        current_reminders = safe_int_convert(b_selected.get("reminders_count", 0))
+                        bags_data[actual_bag_index]["reminders_count"] = current_reminders + 1
+                        save_data(bags_data)
+                        add_to_log(b_selected['bag_number'], b_selected['customer_name'], f"Reminder Sent (Total: {current_reminders + 1})", st.session_state.current_branch)
+                        st.success(f"📨 تم إرسال التذكير رقم {current_reminders + 1} / Reminder #{current_reminders + 1} sent")
+                        
+                        # تشغيل الرابط تلقائياً
+                        st.markdown(f'<script>document.getElementById("reminder_link_{actual_bag_index}").click();</script>', unsafe_allow_html=True)
+                        st.rerun()
+                
+                st.markdown("---")
+                
                 btn_manage_col1, btn_manage_col2, btn_manage_col3, btn_manage_col4 = st.columns(4)
                 
                 with btn_manage_col1:
