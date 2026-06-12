@@ -53,7 +53,7 @@ st.markdown("""
     
     /* النصوص في الشريط الجانبي */
     [data-testid="stSidebar"] .stMarkdown {
-        color: #e0e0e0 !important;
+        color: #FFFFFF !important;
     }
     
     /* تنسيق الأزرار */
